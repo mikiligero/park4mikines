@@ -1,11 +1,9 @@
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { signToken, verifyPassword, hashPassword } from "@/lib/auth";
-import { PrismaClient } from "@prisma/client";
+import prisma from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
-
-const prisma = new PrismaClient();
 
 async function getSystemStatus() {
     const userCount = await prisma.user.count();
