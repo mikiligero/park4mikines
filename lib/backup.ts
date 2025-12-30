@@ -5,7 +5,7 @@ import fs from "fs/promises";
 import path from "path";
 import AdmZip from "adm-zip";
 import { getSession } from "./auth";
-import { revalidatePath } from "next/cache";
+
 
 export async function createBackup() {
     const session = await getSession();
@@ -139,7 +139,7 @@ export async function restoreBackup(formData: FormData) {
             if (data.spots && data.spots.length > 0) {
                 log(`Restaurando ${data.spots.length} sitios...`);
                 // fix dates
-                const spots = data.spots.map((s: any) => ({
+                const spots = data.spots.map((s: { createdAt: string | number | Date; updatedAt: string | number | Date; }) => ({
                     ...s,
                     createdAt: new Date(s.createdAt),
                     updatedAt: new Date(s.updatedAt)
@@ -168,7 +168,7 @@ export async function restoreBackup(formData: FormData) {
             // ChecklistItems
             if (data.checklistItems && data.checklistItems.length > 0) {
                 log(`Restaurando ${data.checklistItems.length} items de checklist...`);
-                const items = data.checklistItems.map((i: any) => ({
+                const items = data.checklistItems.map((i: { createdAt: string | number | Date; }) => ({
                     ...i,
                     createdAt: new Date(i.createdAt)
                 }));
@@ -198,10 +198,9 @@ export async function restoreBackup(formData: FormData) {
         log(`Se han restaurado ${imageCount} archivos en /uploads.`);
         log("Proceso finalizado con éxito.");
 
-        // revalidatePath("/"); // Removed to preventing component remounting/state loss on client. Client will reload manually.
         return { success: true, logs };
 
-    } catch (error: any) {
+    } catch (error: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
         console.error("Restore error:", error);
         log(`ERROR CRÍTICO: ${error.message || error}`);
         return { success: false, error: "Error restoring backup", logs };

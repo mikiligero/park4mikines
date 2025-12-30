@@ -5,11 +5,11 @@ import ProfileSettings from "./ProfileSettings";
 import AppearanceSettings from "./AppearanceSettings";
 import MaintenanceSettings from "./MaintenanceSettings";
 import BackupSettings from "./BackupSettings";
-import { User, Monitor, Brush, Database, Menu, X } from "lucide-react";
+import { User, Monitor, Brush, Database } from "lucide-react";
 
-export default function SettingsClient({ user, isAdmin }: { user: any, isAdmin: boolean }) {
+export default function SettingsClient({ user, isAdmin }: { user: any, isAdmin: boolean }) { // eslint-disable-line @typescript-eslint/no-explicit-any
     const [activeTab, setActiveTab] = useState("profile");
-    const [isMenuOpen, setIsMenuOpen] = useState(false);
+
 
     const menuItems = [
         { id: "profile", name: "Mi Perfil", icon: User, color: "text-purple-600" },
@@ -20,15 +20,7 @@ export default function SettingsClient({ user, isAdmin }: { user: any, isAdmin: 
         ] : []),
     ];
 
-    const ActiveComponent = () => {
-        switch (activeTab) {
-            case "profile": return <ProfileSettings user={user} />;
-            case "appearance": return <AppearanceSettings />;
-            case "maintenance": return <MaintenanceSettings />;
-            case "backups": return <BackupSettings />;
-            default: return <ProfileSettings user={user} />;
-        }
-    };
+
 
     return (
         <div className="space-y-6">
@@ -52,9 +44,10 @@ export default function SettingsClient({ user, isAdmin }: { user: any, isAdmin: 
             </div>
 
             {/* Main Content Area */}
-            <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
-                <ActiveComponent />
-            </div>
+            {activeTab === "profile" && <ProfileSettings user={user} />}
+            {activeTab === "appearance" && <AppearanceSettings />}
+            {activeTab === "maintenance" && <MaintenanceSettings />}
+            {activeTab === "backups" && <BackupSettings />}
 
             <div className="text-center pt-8 pb-4 text-gray-400 dark:text-gray-500 text-xs">
                 <p>Park4Mikines <span className="font-mono">v.0.0.0</span></p>

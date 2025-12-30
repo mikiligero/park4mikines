@@ -4,6 +4,8 @@ import Link from "next/link";
 import { logout } from "@/lib/actions";
 import { getSpots } from "@/lib/actions";
 
+export const dynamic = "force-dynamic";
+
 export default async function Home() {
     const spots = await getSpots();
 

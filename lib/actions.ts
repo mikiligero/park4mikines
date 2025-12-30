@@ -5,7 +5,6 @@ import { getSession } from "@/lib/auth";
 import prisma from "./prisma";
 import sharp from "sharp";
 import path from "path";
-import { writeFile } from "fs/promises";
 import { revalidatePath } from "next/cache";
 import { SpotCategory } from "@prisma/client";
 import bcrypt from "bcryptjs";
@@ -18,7 +17,7 @@ export async function createSpot(formData: FormData) {
 
     const title = formData.get("title") as string;
     const description = formData.get("description") as string;
-    const category = formData.get("category") as any; // Cast to Enum type later
+    const category = formData.get("category") as SpotCategory;
     const latitude = parseFloat(formData.get("latitude") as string);
     const longitude = parseFloat(formData.get("longitude") as string);
     const rating = parseInt(formData.get("rating") as string) || 0;
@@ -101,7 +100,7 @@ export async function updateSpot(id: number, formData: FormData) {
 
     const title = formData.get("title") as string;
     const description = formData.get("description") as string;
-    const category = formData.get("category") as any;
+    const category = formData.get("category") as SpotCategory;
     const latitude = parseFloat(formData.get("latitude") as string);
     const longitude = parseFloat(formData.get("longitude") as string);
     const rating = parseInt(formData.get("rating") as string) || 0;

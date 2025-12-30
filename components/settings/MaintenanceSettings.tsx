@@ -24,7 +24,7 @@ export default function MaintenanceSettings() {
                     message: `Error: ${res.error}`
                 });
             }
-        } catch (e) {
+        } catch {
             setResult({ type: 'error', message: "Error inesperado al ejecutar el mantenimiento." });
         } finally {
             setLoading(false);

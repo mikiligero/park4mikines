@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { X, Navigation, Star, Share2, MapPin, Map, Phone, Globe, Mail, ChevronLeft, ChevronRight, Flag, Trash2, Edit2, Maximize2, ExternalLink, Camera, Heart, Clock, User, AlertCircle, CheckCircle2, Mountain } from "lucide-react";

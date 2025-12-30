@@ -4,7 +4,7 @@ import { useState } from "react";
 import { updateProfile, changePassword } from "@/lib/actions";
 import { User, Lock, Save, Loader2, CheckCircle, AlertCircle } from "lucide-react";
 
-export default function ProfileSettings({ user }: { user: any }) {
+export default function ProfileSettings({ user }: { user: any }) { // eslint-disable-line @typescript-eslint/no-explicit-any
     const [loadingProfile, setLoadingProfile] = useState(false);
     const [loadingPassword, setLoadingPassword] = useState(false);
     const [profileMsg, setProfileMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null);
@@ -110,8 +110,8 @@ export default function ProfileSettings({ user }: { user: any }) {
 
                     {profileMsg && (
                         <div className={`p-3 rounded-lg flex items-center gap-2 text-sm ${profileMsg.type === 'success'
-                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-100 dark:bg-emerald-900/20 dark:border-emerald-800'
-                                : 'bg-red-50 text-red-700 border border-red-100 dark:bg-red-900/20 dark:border-red-800'
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-100 dark:bg-emerald-900/20 dark:border-emerald-800'
+                            : 'bg-red-50 text-red-700 border border-red-100 dark:bg-red-900/20 dark:border-red-800'
                             }`}>
                             {profileMsg.type === 'success' ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
                             {profileMsg.text}
@@ -170,8 +170,8 @@ export default function ProfileSettings({ user }: { user: any }) {
 
                     {passMsg && (
                         <div className={`p-3 rounded-lg flex items-center gap-2 text-sm ${passMsg.type === 'success'
-                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-100 dark:bg-emerald-900/20 dark:border-emerald-800'
-                                : 'bg-red-50 text-red-700 border border-red-100 dark:bg-red-900/20 dark:border-red-800'
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-100 dark:bg-emerald-900/20 dark:border-emerald-800'
+                            : 'bg-red-50 text-red-700 border border-red-100 dark:bg-red-900/20 dark:border-red-800'
                             }`}>
                             {passMsg.type === 'success' ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
                             {passMsg.text}

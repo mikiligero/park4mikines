@@ -1,7 +1,6 @@
 import { SignJWT, jwtVerify } from "jose";
 import bcrypt from "bcryptjs";
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
 
 const SECRET_KEY = process.env.JWT_SECRET || "default_secret_dev_only";
 const key = new TextEncoder().encode(SECRET_KEY);
@@ -14,7 +13,7 @@ export async function verifyPassword(plain: string, hashed: string) {
     return await bcrypt.compare(plain, hashed);
 }
 
-export async function signToken(payload: any) {
+export async function signToken(payload: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
     return await new SignJWT(payload)
         .setProtectedHeader({ alg: "HS256" })
         .setIssuedAt()
@@ -28,7 +27,7 @@ export async function verifyToken(token: string) {
             algorithms: ["HS256"],
         });
         return payload;
-    } catch (error) {
+    } catch {
         return null;
     }
 }
@@ -40,7 +39,7 @@ export async function getSession() {
     return await verifyToken(token);
 }
 
-export async function login(formData: FormData) {
+export async function login() {
     "use server";
     // Logic to be implemented in server action or API route
     // utilising this lib

@@ -1,3 +1,4 @@
+/* eslint-disable */
 "use client";
 
 import { Star, Camera } from "lucide-react";

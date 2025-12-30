@@ -9,6 +9,7 @@ export default function AppearanceSettings() {
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setMounted(true);
     }, []);
 
@@ -23,8 +24,8 @@ export default function AppearanceSettings() {
                 <button
                     onClick={() => setTheme("light")}
                     className={`flex flex-col items-center justify-center p-6 rounded-xl border-2 transition-all ${theme === "light"
-                            ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20"
-                            : "border-gray-200 dark:border-gray-700 hover:border-emerald-200 dark:hover:border-gray-600"
+                        ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20"
+                        : "border-gray-200 dark:border-gray-700 hover:border-emerald-200 dark:hover:border-gray-600"
                         }`}
                 >
                     <Sun className={`w-8 h-8 mb-3 ${theme === "light" ? "text-emerald-600" : "text-gray-400"}`} />
@@ -34,8 +35,8 @@ export default function AppearanceSettings() {
                 <button
                     onClick={() => setTheme("dark")}
                     className={`flex flex-col items-center justify-center p-6 rounded-xl border-2 transition-all ${theme === "dark"
-                            ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20"
-                            : "border-gray-200 dark:border-gray-700 hover:border-emerald-200 dark:hover:border-gray-600"
+                        ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20"
+                        : "border-gray-200 dark:border-gray-700 hover:border-emerald-200 dark:hover:border-gray-600"
                         }`}
                 >
                     <Moon className={`w-8 h-8 mb-3 ${theme === "dark" ? "text-emerald-600" : "text-gray-400"}`} />
@@ -45,8 +46,8 @@ export default function AppearanceSettings() {
                 <button
                     onClick={() => setTheme("system")}
                     className={`flex flex-col items-center justify-center p-6 rounded-xl border-2 transition-all ${theme === "system"
-                            ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20"
-                            : "border-gray-200 dark:border-gray-700 hover:border-emerald-200 dark:hover:border-gray-600"
+                        ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20"
+                        : "border-gray-200 dark:border-gray-700 hover:border-emerald-200 dark:hover:border-gray-600"
                         }`}
                 >
                     <Monitor className={`w-8 h-8 mb-3 ${theme === "system" ? "text-emerald-600" : "text-gray-400"}`} />
