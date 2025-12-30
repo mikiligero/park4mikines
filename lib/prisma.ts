@@ -1,11 +1,19 @@
 import { PrismaClient } from "@prisma/client";
 
 const prismaClientSingleton = () => {
-    console.error("DEBUG: Initializing Prisma with URL:", process.env.DATABASE_URL);
+    let url = process.env.DATABASE_URL;
+
+    if (url && !url.startsWith("file:")) {
+        console.warn("WARNING: DATABASE_URL missing 'file:' prefix. Auto-fixing.");
+        url = `file:${url}`;
+    }
+
+    console.error("DEBUG: Initializing Prisma with URL:", url);
+
     return new PrismaClient({
         datasources: {
             db: {
-                url: process.env.DATABASE_URL,
+                url: url,
             },
         },
     });
