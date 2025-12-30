@@ -5,7 +5,23 @@
 set -e
 
 REPO_URL="https://github.com/mikiligero/park4mikines.git"
-INSTALL_DIR="$(pwd)"
+TARGET_DIR="park4mikines"
+
+# 0. Check context
+if [ -f "docker-compose.yml" ]; then
+    echo "📂 Running inside project directory."
+else
+    # We are likely running via curl
+    if [ -d "$TARGET_DIR" ]; then
+        echo "⚠️  Directory '$TARGET_DIR' already exists. Updating..."
+        cd "$TARGET_DIR"
+        git pull origin main
+    else
+        echo "⬇️  Cloning repository into './$TARGET_DIR'..."
+        git clone "$REPO_URL" "$TARGET_DIR"
+        cd "$TARGET_DIR"
+    fi
+fi
 
 # Colors
 GREEN='\033[0;32m'
