@@ -48,8 +48,9 @@ echo -e "${BLUE}🔧 Setting permissions...${NC}"
 chmod +x update.sh
 
 # 4. Build & Launch
-echo -e "${BLUE}🚀 Building and starting containers...${NC}"
-docker compose up -d --build --remove-orphans
+echo -e "${BLUE}🚀 Pulling and starting containers...${NC}"
+docker compose pull
+docker compose up -d --remove-orphans
 
 echo -e "${GREEN}✅ Deployment complete!${NC}"
 echo -e "${GREEN}🌍 App running at http://$(hostname -I | awk '{print $1}'):3000${NC}"

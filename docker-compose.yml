@@ -1,8 +1,6 @@
 services:
   park4mikines:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ghcr.io/mikiligero/park4mikines:latest
     container_name: park4mikines
     restart: always
     network_mode: "host" # Optimized for LXC
