@@ -1,0 +1,113 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Enums
+enum Role {
+  USER
+  ADMIN
+}
+
+enum SpotCategory {
+  NATURE         // En plena naturaleza
+  PARKING_DN     // Aparcamiento día y noche
+  REST_AREA      // Área de descanso
+  PICNIC         // Zona de picnic
+  AC_FREE        // Área de AC gratuita
+  AC_PAID        // Área de AC de pago
+  OFFROAD        // Off-road (4x4)
+  CAMPING        // Camping
+  SERVICE        // Área de servicios sin aparcamiento
+  PARKING_DAY    // Aparcamiento solo día
+  CANDIDATO      // Candidato
+}
+
+// Models
+model User {
+  id        Int        @id @default(autoincrement())
+  username  String     @unique
+  password  String
+  name      String?
+  role      Role       @default(USER)
+  createdAt DateTime   @default(now())
+  
+  spots     Spot[]
+  favorites Favorite[]
+  checklistItems ChecklistItem[]
+}
+
+model Spot {
+  id          Int          @id @default(autoincrement())
+  title       String
+  description String?
+  latitude    Float
+  longitude   Float
+  isFree      Boolean      @default(true)
+  places      Int          @default(1)
+  category    SpotCategory
+  images      SpotImage[]
+  services    SpotService[]
+  rating      Int          @default(0)
+  
+  authorId    Int
+  author      User         @relation(fields: [authorId], references: [id])
+  
+  favoritedBy Favorite[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model SpotImage {
+  id        Int      @id @default(autoincrement())
+  url       String
+  spotId    Int
+  spot      Spot     @relation(fields: [spotId], references: [id], onDelete: Cascade)
+}
+
+model Service {
+  id    Int           @id @default(autoincrement())
+  name  String        @unique
+  icon  String        // Lucide icon name
+  spots SpotService[]
+}
+
+model SpotService {
+  spotId    Int
+  serviceId Int
+  spot      Spot    @relation(fields: [spotId], references: [id], onDelete: Cascade)
+  service   Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@id([spotId, serviceId])
+}
+
+model Favorite {
+  userId Int
+  spotId Int
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  spot   Spot @relation(fields: [spotId], references: [id], onDelete: Cascade)
+
+  @@id([userId, spotId])
+}
+
+enum ItemType {
+  FOOD
+  GEAR
+}
+
+model ChecklistItem {
+  id        Int      @id @default(autoincrement())
+  text      String
+  checked   Boolean  @default(false)
+  type      ItemType
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
