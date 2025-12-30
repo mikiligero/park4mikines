@@ -4,6 +4,8 @@ services:
     container_name: park4mikines
     restart: always
     network_mode: "host" # Optimized for LXC
+    security_opt:
+      - apparmor:unconfined
     environment:
       - DATABASE_URL=${DATABASE_URL:-file:/app/prisma/dev.db}
       - JWT_SECRET=${JWT_SECRET}
