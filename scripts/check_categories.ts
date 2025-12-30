@@ -1,2 +1,2 @@
-import { SpotCategory } from '@prisma/client';
+import { SpotCategory } from '../lib/types';
 console.log('Categories:', Object.values(SpotCategory));

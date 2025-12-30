@@ -6,7 +6,7 @@ import prisma from "./prisma";
 import sharp from "sharp";
 import path from "path";
 import { revalidatePath } from "next/cache";
-import { SpotCategory } from "@prisma/client";
+import { SpotCategory } from "@/lib/types";
 import bcrypt from "bcryptjs";
 
 export async function createSpot(formData: FormData) {
