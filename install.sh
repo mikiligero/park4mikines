@@ -86,8 +86,8 @@ docker compose pull
 docker compose up -d --remove-orphans
 
 echo -e "${BLUE}📦 Applying database migrations...${NC}"
-# Use local binary to avoid npx network issues and ensure correct version
-docker exec park4mikines ./node_modules/.bin/prisma migrate deploy
+# Use global prisma binary (baked into Dockerfile)
+docker exec park4mikines prisma migrate deploy
 
 echo -e "${GREEN}✅ Deployment complete!${NC}"
 echo -e "${GREEN}🌍 App running at http://$(hostname -I | awk '{print $1}'):3000${NC}"

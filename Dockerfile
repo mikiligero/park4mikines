@@ -41,6 +41,9 @@ RUN apk add --no-cache openssl libc6-compat
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
+# Install Prisma CLI globally so it's available for migrations
+RUN npm install -g prisma@5.22.0
+
 COPY --from=builder /app/public ./public
 
 # Set the correct permission for prerender cache
