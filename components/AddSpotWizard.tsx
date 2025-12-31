@@ -661,27 +661,29 @@ export default function AddSpotWizard({ spot, onCancel }: { spot?: any; onCancel
 }
 
 // Helper component for Coordinates to manage focus/typing state
-function CoordinatesInput({ lat, lon, onChange, onCancel }: { lat: number, lon: number, onChange: (lat: number, lon: number) => void, onCancel: () => void }) {
-    const [value, setValue] = useState(`${lat.toFixed(6)}, ${lon.toFixed(6)}`);
+function CoordinatesInput({ onChange, onCancel }: { onChange: (lat: number, lon: number) => void, onCancel: () => void }) {
+    const [value, setValue] = useState("");
 
     const handleApply = () => {
-        // Regex for parsing: matches two numbers separated by comma/space
-        const regex = /(-?\d+(?:\.\d+)?)[,\s]+(-?\d+(?:\.\d+)?)/;
-        const match = value.match(regex);
+        // Robust parsing strategy:
+        // 1. Find all number-like patterns (including those with spaces after minus sign)
+        // Regex: /(-?\s*\d+(?:\.\d+)?)/g
+        const matches = value.match(/(-?\s*\d+(?:\.\d+)?)/g);
 
-        if (match) {
-            const newLat = parseFloat(match[1]);
-            const newLon = parseFloat(match[2]);
+        if (matches && matches.length >= 2) {
+            // Remove spaces from matches (e.g. "- 3.5" -> "-3.5") before parsing
+            const newLat = parseFloat(matches[0].replace(/\s/g, ''));
+            const newLon = parseFloat(matches[1].replace(/\s/g, ''));
 
             if (!isNaN(newLat) && !isNaN(newLon) &&
                 newLat >= -90 && newLat <= 90 &&
                 newLon >= -180 && newLon <= 180) {
                 onChange(newLat, newLon);
             } else {
-                alert("Coordenadas fuera de rango");
+                alert("Coordenadas fuera de rango (-90 a 90, -180 a 180)");
             }
         } else {
-            alert("Formato inválido. Usa: Latitud, Longitud");
+            alert("Formato no reconocido. Prueba: Lat, Lon");
         }
     };
 
@@ -691,7 +693,7 @@ function CoordinatesInput({ lat, lon, onChange, onCancel }: { lat: number, lon: 
                 type="text"
                 value={value}
                 onChange={(e) => setValue(e.target.value)}
-                placeholder="37.123, -3.123"
+                placeholder="Ej: 37.123, -3.123"
                 className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-lg font-mono mb-6 focus:ring-2 focus:ring-emerald-500 outline-none"
                 autoFocus
             />
