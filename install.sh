@@ -64,6 +64,13 @@ echo -e "${BLUE}🔧 Setting permissions...${NC}"
 chmod +x update.sh
 
 # 4. Build & Launch
+echo -e "${BLUE}🚀 Ensuring database file exists...${NC}"
+mkdir -p prisma
+if [ ! -f prisma/dev.db ]; then
+    echo "Creating empty database file to prevent Docker directory issue..."
+    touch prisma/dev.db
+fi
+
 echo -e "${BLUE}🚀 Pulling and starting containers...${NC}"
 docker compose pull
 docker compose up -d --remove-orphans
