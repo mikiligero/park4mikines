@@ -2,13 +2,7 @@ import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
 import { hashPassword } from "../lib/auth";
 
-const prisma = new PrismaClient({
-    datasources: {
-        db: {
-            url: process.env.DATABASE_URL
-        }
-    }
-});
+const prisma = new PrismaClient();
 
 async function main() {
     const username = "admin";

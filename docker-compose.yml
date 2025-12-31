@@ -7,7 +7,7 @@ services:
     security_opt:
       - apparmor:unconfined
     environment:
-      - DATABASE_URL=file:///tmp/dev.db
+      - DATABASE_URL=file:/tmp/dev.db
       - JWT_SECRET=${JWT_SECRET}
       - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
     volumes:
