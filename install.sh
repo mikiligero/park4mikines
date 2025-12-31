@@ -78,6 +78,9 @@ if [ ! -f prisma/dev.db ]; then
     touch prisma/dev.db
 fi
 
+# Ensure the database file is writable by the container user (UID 1001)
+chmod 666 prisma/dev.db
+
 echo -e "${BLUE}🚀 Pulling and starting containers...${NC}"
 docker compose pull
 docker compose up -d --remove-orphans
