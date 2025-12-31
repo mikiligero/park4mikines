@@ -66,6 +66,13 @@ chmod +x update.sh
 # 4. Build & Launch
 echo -e "${BLUE}🚀 Ensuring database file exists...${NC}"
 mkdir -p prisma
+
+# If it exists as a directory, it must be removed to allow file creation
+if [ -d prisma/dev.db ]; then
+    echo "⚠️  Found directory at prisma/dev.db. Removing..."
+    rm -rf prisma/dev.db
+fi
+
 if [ ! -f prisma/dev.db ]; then
     echo "Creating empty database file to prevent Docker directory issue..."
     touch prisma/dev.db
