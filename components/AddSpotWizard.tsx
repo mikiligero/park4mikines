@@ -267,8 +267,7 @@ export default function AddSpotWizard({ spot, onCancel }: { spot?: any; onCancel
                         <h3 className="text-lg font-bold text-gray-900 mb-4">Introduce coordenadas</h3>
 
                         <CoordinatesInput
-                            lat={formData.latitude}
-                            lon={formData.longitude}
+
                             onChange={(lat, lon) => {
                                 setFormData(prev => ({ ...prev, latitude: lat, longitude: lon }));
                                 setShowManualCoords(false);
