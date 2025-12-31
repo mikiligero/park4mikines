@@ -81,6 +81,11 @@ fi
 # Ensure the database file is writable by the container user (UID 1001)
 chmod 666 prisma/dev.db
 
+# Ensure uploads directory exists and is writable
+echo "Ensure uploads directory exists..."
+mkdir -p public/uploads
+chmod 777 public/uploads
+
 echo -e "${BLUE}🚀 Pulling and starting containers...${NC}"
 docker compose pull
 docker compose up -d --remove-orphans
