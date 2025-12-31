@@ -48,7 +48,7 @@ fi
 # 2. Setup .env
 if [ ! -f .env ]; then
     echo -e "${BLUE}⚙️  Generating .env...${NC}"
-    echo "DATABASE_URL=file:/app/prisma/dev.db" > .env
+    echo "DATABASE_URL=file:/tmp/dev.db" > .env
     
     # Generate JWT Secret
     if command -v openssl &> /dev/null; then
