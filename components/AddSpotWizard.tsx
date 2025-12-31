@@ -222,79 +222,67 @@ export default function AddSpotWizard({ spot, onCancel }: { spot?: any; onCancel
                 </div>
             </div>
 
-            <div className="p-4 bg-white border-t border-gray-200">
-                {!showManualCoords ? (
-                    <div className="flex gap-4 mb-4">
-                        <button
-                            onClick={() => {
-                                setLoadingLocation(true);
-                                if (navigator.geolocation) {
-                                    navigator.geolocation.getCurrentPosition(
-                                        (position) => {
-                                            setFormData(prev => ({
-                                                ...prev,
-                                                latitude: position.coords.latitude,
-                                                longitude: position.coords.longitude
-                                            }));
-                                            setLoadingLocation(false);
-                                        },
-                                        (error) => {
-                                            console.error("Error getting location", error);
-                                            setLoadingLocation(false);
-                                        },
-                                        { timeout: 5000, enableHighAccuracy: true }
-                                    );
-                                } else {
+            <div className="flex gap-4 mb-4">
+                <button
+                    onClick={() => {
+                        setLoadingLocation(true);
+                        if (navigator.geolocation) {
+                            navigator.geolocation.getCurrentPosition(
+                                (position) => {
+                                    setFormData(prev => ({
+                                        ...prev,
+                                        latitude: position.coords.latitude,
+                                        longitude: position.coords.longitude
+                                    }));
                                     setLoadingLocation(false);
-                                }
-                            }}
-                            className="flex-1 flex items-center justify-center gap-2 bg-white border border-gray-300 rounded-lg py-3 text-sm font-medium text-blue-600 shadow-sm transition-colors hover:bg-gray-50"
-                        >
-                            <Crosshair className="w-4 h-4" /> Mi posición
-                        </button>
-                        <button
-                            onClick={() => setShowManualCoords(true)}
-                            className="flex-1 flex items-center justify-center gap-2 bg-white border border-gray-300 rounded-lg py-3 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50"
-                        >
-                            <MapPin className="w-4 h-4" /> Coordenadas
-                        </button>
-                    </div>
-                ) : (
-                    <div className="mb-4 space-y-3 animate-in fade-in slide-in-from-bottom-4 duration-300">
-                        <div className="flex items-center gap-3">
-                            <div className="flex-1">
-                                <label className="text-xs font-bold text-gray-500 uppercase">Latitud</label>
-                                <input
-                                    type="number"
-                                    step="any"
-                                    value={formData.latitude}
-                                    onChange={(e) => setFormData(prev => ({ ...prev, latitude: parseFloat(e.target.value) || 0 }))}
-                                    className="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg text-sm font-mono focus:ring-2 focus:ring-emerald-500 outline-none"
-                                />
-                            </div>
-                            <div className="flex-1">
-                                <label className="text-xs font-bold text-gray-500 uppercase">Longitud</label>
-                                <input
-                                    type="number"
-                                    step="any"
-                                    value={formData.longitude}
-                                    onChange={(e) => setFormData(prev => ({ ...prev, longitude: parseFloat(e.target.value) || 0 }))}
-                                    className="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg text-sm font-mono focus:ring-2 focus:ring-emerald-500 outline-none"
-                                />
-                            </div>
-                            <button
-                                onClick={() => setShowManualCoords(false)}
-                                className="mt-5 p-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg transition-colors"
-                            >
-                                <X className="w-5 h-5" />
-                            </button>
-                        </div>
-                        <p className="text-xs text-gray-400 text-center">Introduce las coordenadas decimales (ej. 37.67558)</p>
-                    </div>
-                )}
+                                },
+                                (error) => {
+                                    console.error("Error getting location", error);
+                                    setLoadingLocation(false);
+                                    alert("No se pudo obtener la ubicación");
+                                },
+                                { timeout: 5000, enableHighAccuracy: true }
+                            );
+                        } else {
+                            setLoadingLocation(false);
+                            alert("Geolocalización no soportada");
+                        }
+                    }}
+                    className="flex-1 flex items-center justify-center gap-2 bg-white border border-gray-300 rounded-lg py-3 text-sm font-medium text-blue-600 shadow-sm transition-colors hover:bg-gray-50"
+                >
+                    <Crosshair className="w-4 h-4" /> Mi posición
+                </button>
+                <button
+                    onClick={() => setShowManualCoords(true)}
+                    className="flex-1 flex items-center justify-center gap-2 bg-white border border-gray-300 rounded-lg py-3 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50"
+                >
+                    <MapPin className="w-4 h-4" /> Coordenadas
+                </button>
             </div>
+
+            {/* Coordinate Modal */}
+            {showManualCoords && (
+                <div className="fixed inset-0 z-[11000] bg-black/50 flex items-center justify-center p-4">
+                    <div className="bg-white w-full max-w-sm rounded-2xl p-6 shadow-xl animate-in zoom-in-95 duration-200">
+                        <h3 className="text-lg font-bold text-gray-900 mb-4">Introduce coordenadas</h3>
+
+                        <CoordinatesInput
+                            lat={formData.latitude}
+                            lon={formData.longitude}
+                            onChange={(lat, lon) => {
+                                setFormData(prev => ({ ...prev, latitude: lat, longitude: lon }));
+                                setShowManualCoords(false);
+                            }}
+                            onCancel={() => setShowManualCoords(false)}
+                        />
+                    </div>
+                </div>
+            )}
         </div>
     );
+
+
+
 
     const renderStep2_Category = () => {
         // Shared SVGs - ideally move to a shared file, but for now inlining
@@ -382,8 +370,8 @@ export default function AddSpotWizard({ spot, onCancel }: { spot?: any; onCancel
                                 type="button"
                                 onClick={() => setFormData(prev => ({ ...prev, places: num }))}
                                 className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${formData.places === num
-                                        ? "bg-emerald-500 text-white shadow-sm"
-                                        : "text-gray-500 hover:bg-gray-200"
+                                    ? "bg-emerald-500 text-white shadow-sm"
+                                    : "text-gray-500 hover:bg-gray-200"
                                     }`}
                             >
                                 {num}{num === 5 ? "+" : ""}
@@ -669,5 +657,63 @@ export default function AddSpotWizard({ spot, onCancel }: { spot?: any; onCancel
             </div>
         </div>,
         document.body
+    );
+}
+
+// Helper component for Coordinates to manage focus/typing state
+function CoordinatesInput({ lat, lon, onChange, onCancel }: { lat: number, lon: number, onChange: (lat: number, lon: number) => void, onCancel: () => void }) {
+    const [value, setValue] = useState(`${lat.toFixed(6)}, ${lon.toFixed(6)}`);
+
+    const handleApply = () => {
+        // Regex for parsing: matches two numbers separated by comma/space
+        const regex = /(-?\d+(?:\.\d+)?)[,\s]+(-?\d+(?:\.\d+)?)/;
+        const match = value.match(regex);
+
+        if (match) {
+            const newLat = parseFloat(match[1]);
+            const newLon = parseFloat(match[2]);
+
+            if (!isNaN(newLat) && !isNaN(newLon) &&
+                newLat >= -90 && newLat <= 90 &&
+                newLon >= -180 && newLon <= 180) {
+                onChange(newLat, newLon);
+            } else {
+                alert("Coordenadas fuera de rango");
+            }
+        } else {
+            alert("Formato inválido. Usa: Latitud, Longitud");
+        }
+    };
+
+    return (
+        <div>
+            <input
+                type="text"
+                value={value}
+                onChange={(e) => setValue(e.target.value)}
+                placeholder="37.123, -3.123"
+                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-lg font-mono mb-6 focus:ring-2 focus:ring-emerald-500 outline-none"
+                autoFocus
+            />
+
+            <div className="flex gap-3">
+                <button
+                    onClick={onCancel}
+                    className="flex-1 py-3 text-gray-600 font-medium rounded-xl hover:bg-gray-100 transition-colors"
+                >
+                    Cancelar
+                </button>
+                <button
+                    onClick={handleApply}
+                    className="flex-1 py-3 bg-emerald-500 text-white font-bold rounded-xl hover:bg-emerald-600 shadow-md transition-colors"
+                >
+                    Aceptar
+                </button>
+            </div>
+
+            <p className="text-xs text-gray-400 text-center mt-6">
+                Ejemplos: <code>37.123, -3.123</code> o <code>(37.123, -3.123)</code>
+            </p>
+        </div>
     );
 }
