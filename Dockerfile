@@ -44,7 +44,7 @@ RUN adduser --system --uid 1001 nextjs
 # Install Prisma CLI globally so it's available for migrations
 RUN npm install -g prisma@5.22.0
 
-COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+COPY --from=builder /app/public ./public
 
 # Set the correct permission for prerender cache
 RUN mkdir .next
@@ -60,7 +60,11 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
 # Copy prisma schema and migrations if needed
+# Copy prisma schema and migrations
 COPY --from=builder /app/prisma ./prisma
+# Ensure nextjs user owns everything we just copied to avoid permission issues
+# (Using RUN chown instead of COPY flag for maximum compatibility)
+RUN chown -R nextjs:nodejs ./public ./prisma
 
 USER nextjs
 
