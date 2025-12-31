@@ -83,9 +83,8 @@ docker compose pull
 docker compose up -d --remove-orphans
 
 echo -e "${BLUE}📦 Applying database migrations...${NC}"
-# Use npx prisma migrate deploy to apply existing migrations to the new DB
-# -p prisma@5.22.0 ensures we use the correct CLI version compatible with our schema (avoiding v7)
-docker exec park4mikines npx -y -p prisma@5.22.0 prisma migrate deploy
+# Use local binary to avoid npx network issues and ensure correct version
+docker exec park4mikines ./node_modules/.bin/prisma migrate deploy
 
 echo -e "${GREEN}✅ Deployment complete!${NC}"
 echo -e "${GREEN}🌍 App running at http://$(hostname -I | awk '{print $1}'):3000${NC}"
