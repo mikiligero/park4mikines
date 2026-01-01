@@ -659,41 +659,69 @@ export default function AddSpotWizard({ spot, onCancel }: { spot?: any; onCancel
     );
 }
 
+// Helper to parse coordinate string (DMS or Decimal)
+function parseCoordinateString(input: string): { lat: number, lon: number } | null {
+    // 1. Try DMS format first (e.g. 37°39'30.5"N 3°43'04.2"W)
+    // Matches: degrees, minutes, seconds, direction (N/S/E/W)
+    // We look for two groups of this pattern
+    const dmsRegex = /(\d+)[°º\s]+(\d+)[`'\s]+(\d+(?:\.\d+)?)[´"\s]*([NSEW])/gi;
+    const dmsMatches = [...input.matchAll(dmsRegex)];
+
+    if (dmsMatches.length >= 2) {
+        const parseDMS = (deg: string, min: string, sec: string, dir: string) => {
+            let decimal = parseFloat(deg) + parseFloat(min) / 60 + parseFloat(sec) / 3600;
+            if (dir.toUpperCase() === 'S' || dir.toUpperCase() === 'W') {
+                decimal *= -1;
+            }
+            return decimal;
+        };
+
+        const lat = parseDMS(dmsMatches[0][1], dmsMatches[0][2], dmsMatches[0][3], dmsMatches[0][4]);
+        const lon = parseDMS(dmsMatches[1][1], dmsMatches[1][2], dmsMatches[1][3], dmsMatches[1][4]);
+        return { lat, lon };
+    }
+
+    // 2. Try Standard Decimal format
+    // Regex: /(-?\s*\d+(?:\.\d+)?)/g
+    const decimalMatches = input.match(/(-?\s*\d+(?:\.\d+)?)/g);
+    if (decimalMatches && decimalMatches.length >= 2) {
+        const lat = parseFloat(decimalMatches[0].replace(/\s/g, ''));
+        const lon = parseFloat(decimalMatches[1].replace(/\s/g, ''));
+        return { lat, lon };
+    }
+
+    return null;
+}
+
 // Helper component for Coordinates to manage focus/typing state
 function CoordinatesInput({ onChange, onCancel }: { onChange: (lat: number, lon: number) => void, onCancel: () => void }) {
     const [value, setValue] = useState("");
 
     const handleApply = () => {
-        // Robust parsing strategy:
-        // 1. Find all number-like patterns (including those with spaces after minus sign)
-        // Regex: /(-?\s*\d+(?:\.\d+)?)/g
-        const matches = value.match(/(-?\s*\d+(?:\.\d+)?)/g);
+        const result = parseCoordinateString(value);
 
-        if (matches && matches.length >= 2) {
-            // Remove spaces from matches (e.g. "- 3.5" -> "-3.5") before parsing
-            const newLat = parseFloat(matches[0].replace(/\s/g, ''));
-            const newLon = parseFloat(matches[1].replace(/\s/g, ''));
-
-            if (!isNaN(newLat) && !isNaN(newLon) &&
-                newLat >= -90 && newLat <= 90 &&
-                newLon >= -180 && newLon <= 180) {
-                onChange(newLat, newLon);
+        if (result) {
+            if (
+                !isNaN(result.lat) && !isNaN(result.lon) &&
+                result.lat >= -90 && result.lat <= 90 &&
+                result.lon >= -180 && result.lon <= 180
+            ) {
+                onChange(result.lat, result.lon);
             } else {
                 alert("Coordenadas fuera de rango (-90 a 90, -180 a 180)");
             }
         } else {
-            alert("Formato no reconocido. Prueba: Lat, Lon");
+            alert("Formato no reconocido. Prueba:\n- Decimal: 37.123, -3.123\n- DMS: 37°39'30.5\"N 3°43'04.2\"W");
         }
     };
 
     return (
         <div>
-            <input
-                type="text"
+            <textarea
                 value={value}
                 onChange={(e) => setValue(e.target.value)}
-                placeholder="Ej: 37.123, -3.123"
-                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-lg font-mono mb-6 focus:ring-2 focus:ring-emerald-500 outline-none"
+                placeholder="Ej: 37.123, -3.123&#10;o DMS: 37°39'30.5&quot;N 3°43'04.2&quot;W"
+                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-mono mb-6 focus:ring-2 focus:ring-emerald-500 outline-none resize-none h-24"
                 autoFocus
             />
 
@@ -713,7 +741,7 @@ function CoordinatesInput({ onChange, onCancel }: { onChange: (lat: number, lon:
             </div>
 
             <p className="text-xs text-gray-400 text-center mt-6">
-                Ejemplos: <code>37.123, -3.123</code> o <code>(37.123, -3.123)</code>
+                Soporta formatos Decimal y DMS (Grados, Minutos, Segundos)
             </p>
         </div>
     );
