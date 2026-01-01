@@ -17,7 +17,7 @@ export async function signToken(payload: any) { // eslint-disable-line @typescri
     return await new SignJWT(payload)
         .setProtectedHeader({ alg: "HS256" })
         .setIssuedAt()
-        .setExpirationTime("7d")
+        .setExpirationTime("180d")
         .sign(key);
 }
 

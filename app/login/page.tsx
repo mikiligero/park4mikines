@@ -28,6 +28,7 @@ async function loginAction(formData: FormData) {
         secure: process.env.NODE_ENV === "production",
         sameSite: "lax",
         path: "/",
+        maxAge: 60 * 60 * 24 * 180, // 6 months
     });
 
     redirect("/");
@@ -67,6 +68,7 @@ async function registerAdminAction(formData: FormData) {
         secure: process.env.NODE_ENV === "production",
         sameSite: "lax",
         path: "/",
+        maxAge: 60 * 60 * 24 * 180, // 6 months
     });
 
     redirect("/");
