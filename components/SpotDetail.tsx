@@ -72,25 +72,25 @@ export default function SpotDetail({ spot, onClose, onEdit }: SpotDetailProps) {
             />
 
             {/* Panel */}
-            <div className="relative w-full max-w-md h-full bg-white shadow-2xl pointer-events-auto overflow-y-auto animate-in slide-in-from-right duration-300">
+            <div className="relative w-full max-w-md h-full bg-white dark:bg-gray-950 shadow-2xl pointer-events-auto overflow-y-auto animate-in slide-in-from-right duration-300">
 
                 {/* Header */}
-                <div className="sticky top-0 z-10 bg-white border-b border-gray-100 flex items-center justify-between px-4 py-3">
+                <div className="sticky top-0 z-10 bg-white dark:bg-gray-950 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between px-4 py-3">
                     <button
                         onClick={onClose}
-                        className="p-2 -ml-2 rounded-full hover:bg-gray-100 text-gray-600 transition-colors"
+                        className="p-2 -ml-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-900 text-gray-600 dark:text-gray-300 transition-colors"
                     >
                         <ChevronLeft className="w-6 h-6" />
                     </button>
 
                     <div className="flex items-center gap-2">
 
-                        <h2 className="font-bold text-gray-800 line-clamp-1">{spot.title}</h2>
+                        <h2 className="font-bold text-gray-800 dark:text-white line-clamp-1">{spot.title}</h2>
                     </div>
 
                     <div className="flex items-center gap-1">
 
-                        <button className="p-2 -mr-2 text-gray-600 hover:bg-gray-100 rounded-full">
+                        <button className="p-2 -mr-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-900 rounded-full">
                             <Share2 className="w-5 h-5" />
                         </button>
                     </div>

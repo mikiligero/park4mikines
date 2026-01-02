@@ -290,7 +290,7 @@ export default function Map({ spots }: { spots: any[] }) {
 
             {/* List View Overlay */}
             {viewMode === 'list' && (
-                <div className="absolute inset-0 z-[500] bg-gray-50 pt-24 md:pt-20">
+                <div className="absolute inset-0 z-[500] bg-gray-50 dark:bg-gray-950 pt-24 md:pt-20">
                     <SpotList
                         spots={visibleSpots}
                         onSpotClick={(spot) => {
@@ -332,11 +332,11 @@ export default function Map({ spots }: { spots: any[] }) {
             <div className="fixed top-4 right-4 z-[1500] flex items-center gap-3">
                 {/* Search Bar */}
                 <div className="relative z-[1600]">
-                    <div className="flex items-center bg-white/90 backdrop-blur-sm rounded-lg shadow-md px-3 py-2 h-10 w-40 md:w-64 border border-gray-200 focus-within:ring-2 focus-within:ring-green-100 transition-shadow">
+                    <div className="flex items-center bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm rounded-lg shadow-md px-3 py-2 h-10 w-40 md:w-64 border border-gray-200 dark:border-gray-800 focus-within:ring-2 focus-within:ring-green-100 dark:focus-within:ring-green-900 transition-shadow">
                         <input
                             type="text"
                             placeholder="Ciudad, país, dirección"
-                            className="bg-transparent border-none outline-none text-sm text-gray-700 placeholder-gray-400 w-full"
+                            className="bg-transparent border-none outline-none text-sm text-gray-700 dark:text-gray-200 placeholder-gray-400 w-full"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             onFocus={() => {
@@ -367,12 +367,12 @@ export default function Map({ spots }: { spots: any[] }) {
 
                     {/* Autocomplete Results */}
                     {showSearchResults && searchResults.length > 0 && (
-                        <div className="absolute top-12 left-0 w-40 md:w-64 bg-white rounded-lg shadow-xl border border-gray-100 overflow-hidden animate-in fade-in zoom-in-95 duration-100 z-[3000]">
+                        <div className="absolute top-12 left-0 w-40 md:w-64 bg-white dark:bg-gray-900 rounded-lg shadow-xl border border-gray-100 dark:border-gray-800 overflow-hidden animate-in fade-in zoom-in-95 duration-100 z-[3000]">
                             {searchResults.map((result: any, index) => (
                                 <button
                                     key={index}
                                     type="button"
-                                    className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 border-b border-gray-50 last:border-0 transition-colors flex items-center gap-2"
+                                    className="w-full text-left px-4 py-3 text-sm text-gray-700 dark:text-gray-200 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:text-emerald-700 dark:hover:text-emerald-400 border-b border-gray-50 dark:border-gray-800 last:border-0 transition-colors flex items-center gap-2"
                                     onClick={() => handleSelectLocation(result.lat, result.lon, result.display_name)}
                                 >
                                     <MapPin className="w-4 h-4 text-gray-400 flex-shrink-0" />
@@ -386,7 +386,7 @@ export default function Map({ spots }: { spots: any[] }) {
                 {/* Filter Button */}
                 <button
                     onClick={() => setShowFilters(true)}
-                    className={`h-10 w-10 bg-white rounded-full shadow-md flex items-center justify-center border border-gray-200 transition-transform active:scale-95 ${showFilters || selectedCategories.length > 0 ? 'text-blue-600 ring-2 ring-blue-100' : 'text-gray-600'}`}
+                    className={`h-10 w-10 bg-white dark:bg-gray-900 rounded-full shadow-md flex items-center justify-center border border-gray-200 dark:border-gray-800 transition-transform active:scale-95 ${showFilters || selectedCategories.length > 0 ? 'text-blue-600 dark:text-blue-400 ring-2 ring-blue-100 dark:ring-blue-900' : 'text-gray-600 dark:text-gray-400'}`}
                 >
                     <Filter className="h-5 w-5" />
                 </button>
@@ -394,7 +394,7 @@ export default function Map({ spots }: { spots: any[] }) {
                 {/* List/Map Toggle */}
                 <button
                     onClick={() => setViewMode(prev => prev === 'map' ? 'list' : 'map')}
-                    className={`h-10 w-10 bg-white rounded-full shadow-md flex items-center justify-center border border-gray-200 transition-transform active:scale-95 ${viewMode === 'list' ? 'text-blue-600 ring-2 ring-blue-100' : 'text-gray-600'}`}
+                    className={`h-10 w-10 bg-white dark:bg-gray-900 rounded-full shadow-md flex items-center justify-center border border-gray-200 dark:border-gray-800 transition-transform active:scale-95 ${viewMode === 'list' ? 'text-blue-600 dark:text-blue-400 ring-2 ring-blue-100 dark:ring-blue-900' : 'text-gray-600 dark:text-gray-400'}`}
                     title={viewMode === 'map' ? "Ver lista" : "Ver mapa"}
                 >
                     {viewMode === 'map' ? (
@@ -408,7 +408,7 @@ export default function Map({ spots }: { spots: any[] }) {
                 <button
                     onClick={handleLocateMe}
                     disabled={isLocating}
-                    className={`h-10 w-10 bg-white rounded-full shadow-md flex items-center justify-center border border-gray-200 transition-all active:scale-95 ${isLocating ? 'text-emerald-500 animate-pulse' : 'text-gray-600 hover:text-emerald-500'}`}
+                    className={`h-10 w-10 bg-white dark:bg-gray-900 rounded-full shadow-md flex items-center justify-center border border-gray-200 dark:border-gray-800 transition-all active:scale-95 ${isLocating ? 'text-emerald-500 animate-pulse' : 'text-gray-600 dark:text-gray-400 hover:text-emerald-500'}`}
                     title="Mi posición"
                 >
                     <Crosshair className={`h-5 w-5 ${isLocating ? 'animate-spin' : ''}`} />
@@ -419,12 +419,12 @@ export default function Map({ spots }: { spots: any[] }) {
             {
                 showFilters && (
                     <div className="fixed inset-0 z-[5000] bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in active:animate-none">
-                        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[85vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="bg-white dark:bg-gray-950 rounded-2xl shadow-2xl w-full max-w-md max-h-[85vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
                             {/* Modal Header */}
-                            <div className="flex items-center justify-between p-4 border-b border-gray-100">
+                            <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-800">
                                 <div className="w-6"></div> {/* Spacer for centering */}
-                                <h2 className="text-lg font-bold text-gray-800">Filtros</h2>
-                                <button onClick={() => setShowFilters(false)} className="p-1 rounded-full hover:bg-gray-100 text-gray-500">
+                                <h2 className="text-lg font-bold text-gray-800 dark:text-white">Filtros</h2>
+                                <button onClick={() => setShowFilters(false)} className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400">
                                     <X className="h-6 w-6" />
                                 </button>
                             </div>
@@ -434,15 +434,15 @@ export default function Map({ spots }: { spots: any[] }) {
 
                                 {/* Rating and Favorites Section */}
                                 <div>
-                                    <h3 className="font-semibold text-gray-800 mb-3">Preferencias:</h3>
+                                    <h3 className="font-semibold text-gray-800 dark:text-gray-200 mb-3">Preferencias:</h3>
 
                                     {/* Favorites Toggle */}
-                                    <label className="flex items-center justify-between p-3 bg-red-50 rounded-xl cursor-pointer mb-4 border border-red-100">
+                                    <label className="flex items-center justify-between p-3 bg-red-50 dark:bg-red-900/10 rounded-xl cursor-pointer mb-4 border border-red-100 dark:border-red-900/20">
                                         <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-red-500 shadow-sm border border-red-100">
+                                            <div className="w-8 h-8 rounded-full bg-white dark:bg-red-900/30 flex items-center justify-center text-red-500 shadow-sm border border-red-100 dark:border-red-900/10">
                                                 <Heart className={`w-5 h-5 ${showFavoritesOnly ? "fill-current" : ""}`} />
                                             </div>
-                                            <span className="font-medium text-gray-900">Solo Favoritos</span>
+                                            <span className="font-medium text-gray-900 dark:text-white">Solo Favoritos</span>
                                         </div>
                                         <input
                                             type="checkbox"
@@ -453,13 +453,13 @@ export default function Map({ spots }: { spots: any[] }) {
                                     </label>
 
                                     {/* Rating Slider/Selector */}
-                                    <div className="bg-yellow-50 rounded-xl p-3 border border-yellow-100">
+                                    <div className="bg-yellow-50 dark:bg-yellow-900/10 rounded-xl p-3 border border-yellow-100 dark:border-yellow-900/20">
                                         <div className="flex items-center justify-between mb-2">
-                                            <span className="font-medium text-gray-900 flex items-center gap-2">
+                                            <span className="font-medium text-gray-900 dark:text-gray-200 flex items-center gap-2">
                                                 <Star className="w-4 h-4 text-yellow-500 fill-current" />
                                                 Valoración mínima
                                             </span>
-                                            <span className="text-sm font-bold text-yellow-600 bg-white px-2 py-0.5 rounded-full shadow-sm">
+                                            <span className="text-sm font-bold text-yellow-600 dark:text-yellow-500 bg-white dark:bg-gray-800 px-2 py-0.5 rounded-full shadow-sm">
                                                 {minRating > 0 ? `${minRating}+` : "Cualquiera"}
                                             </span>
                                         </div>
@@ -474,8 +474,8 @@ export default function Map({ spots }: { spots: any[] }) {
                                                     <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${minRating >= star && star > 0
                                                         ? "bg-yellow-400 text-white shadow-md scale-110"
                                                         : minRating === 0 && star === 0
-                                                            ? "bg-gray-200 text-gray-600"
-                                                            : "bg-white text-gray-300 border border-gray-100 hover:border-yellow-200"
+                                                            ? "bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300"
+                                                            : "bg-white dark:bg-gray-800 text-gray-300 dark:text-gray-600 border border-gray-100 dark:border-gray-700 hover:border-yellow-200"
                                                         }`}>
                                                         {star === 0 ? (
                                                             <span className="text-xs font-bold">Todo</span>
@@ -491,25 +491,25 @@ export default function Map({ spots }: { spots: any[] }) {
 
                                 {/* Categories Section */}
                                 <div>
-                                    <h3 className="font-semibold text-gray-800 mb-3">Filtrar tipos de lugares:</h3>
+                                    <h3 className="font-semibold text-gray-800 dark:text-gray-200 mb-3">Filtrar tipos de lugares:</h3>
                                     <div className="space-y-1">
                                         {categories.map(cat => {
                                             const isChecked = selectedCategories.length === 0 || selectedCategories.includes(cat);
                                             const style = getCategoryStyles(cat);
                                             return (
-                                                <label key={cat} className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
+                                                <label key={cat} className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900 cursor-pointer transition-colors">
                                                     <div className="flex items-center gap-3">
                                                         {/* Icon container */}
                                                         <div className="w-8 h-8 flex items-center justify-center">
                                                             <img src={style.img} alt={style.label} className="w-full h-full" />
                                                         </div>
-                                                        <span className="text-gray-700 font-medium">{style.label}</span>
+                                                        <span className="text-gray-700 dark:text-gray-300 font-medium">{style.label}</span>
                                                     </div>
                                                     <input
                                                         type="checkbox"
                                                         checked={selectedCategories.includes(cat)}
                                                         onChange={() => toggleFilter(selectedCategories, cat, setSelectedCategories)}
-                                                        className="w-5 h-5 rounded border-gray-300 text-emerald-500 focus:ring-emerald-500"
+                                                        className="w-5 h-5 rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-emerald-500 focus:ring-emerald-500"
                                                     />
                                                 </label>
                                             );
@@ -522,27 +522,27 @@ export default function Map({ spots }: { spots: any[] }) {
 
 
 
-                                    <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-3 mt-6">Servicios cercanos</h4>
+                                    <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3 mt-6">Servicios cercanos</h4>
                                     <div className="space-y-1">
                                         {servicesList.map(srv => {
                                             const isChecked = selectedServices.includes(srv.label);
                                             return (
-                                                <label key={srv.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
+                                                <label key={srv.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900 cursor-pointer transition-colors">
                                                     <div className="flex items-center gap-3">
-                                                        <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center text-lg overflow-hidden p-1">
+                                                        <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 flex items-center justify-center text-lg overflow-hidden p-1">
                                                             {srv.icon.startsWith('/') ? (
                                                                 <img src={srv.icon} alt={srv.label} className="w-full h-full object-contain" />
                                                             ) : (
                                                                 srv.icon
                                                             )}
                                                         </div>
-                                                        <span className="text-gray-700 font-medium text-sm">{srv.label}</span>
+                                                        <span className="text-gray-700 dark:text-gray-300 font-medium text-sm">{srv.label}</span>
                                                     </div>
                                                     <input
                                                         type="checkbox"
                                                         checked={isChecked}
                                                         onChange={() => toggleFilter(selectedServices, srv.label, setSelectedServices)}
-                                                        className="w-5 h-5 rounded border-gray-300 text-emerald-500 focus:ring-emerald-500"
+                                                        className="w-5 h-5 rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-emerald-500 focus:ring-emerald-500"
                                                     />
                                                 </label>
                                             );
@@ -553,7 +553,7 @@ export default function Map({ spots }: { spots: any[] }) {
                             </div>
 
                             {/* Modal Footer */}
-                            <div className="p-4 border-t border-gray-100 bg-white">
+                            <div className="p-4 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-950">
                                 <button
                                     onClick={() => setShowFilters(false)}
                                     className="w-full bg-[#34d399] hover:bg-[#10b981] text-white font-bold py-3 px-6 rounded-full shadow-lg transition-transform active:scale-95"
