@@ -302,16 +302,16 @@ export default function AddSpotWizard({ spot, onCancel }: { spot?: any; onCancel
         ];
 
         return (
-            <div className="p-4 overflow-y-auto h-full bg-white">
-                <h2 className="text-xl font-bold text-gray-900 mb-6">Selección del tipo de lugar</h2>
+            <div className="p-4 overflow-y-auto h-full bg-white dark:bg-gray-950">
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Selección del tipo de lugar</h2>
                 <div className="space-y-4">
                     {categories.map(cat => (
-                        <label key={cat.id} className="flex items-center justify-between p-4 rounded-xl border border-gray-200 hover:border-emerald-500 hover:bg-emerald-50 transition-all cursor-pointer group">
+                        <label key={cat.id} className="flex items-center justify-between p-4 rounded-xl border border-gray-200 dark:border-gray-800 hover:border-emerald-500 dark:hover:border-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/10 transition-all cursor-pointer group">
                             <div className="flex items-center gap-4">
                                 <div className={`w-10 h-10 flex items-center justify-center`}>
                                     <img src={cat.icon} alt={cat.label} className="w-full h-full" />
                                 </div>
-                                <span className="font-medium text-gray-700 group-hover:text-emerald-700">{cat.label}</span>
+                                <span className="font-medium text-gray-700 dark:text-gray-200 group-hover:text-emerald-700 dark:group-hover:text-emerald-400">{cat.label}</span>
                             </div>
                             <div className="relative flex items-center">
                                 <input
@@ -320,7 +320,7 @@ export default function AddSpotWizard({ spot, onCancel }: { spot?: any; onCancel
                                     value={cat.id}
                                     checked={formData.category === cat.id}
                                     onChange={() => setFormData(prev => ({ ...prev, category: cat.id }))}
-                                    className="peer h-6 w-6 border-2 border-gray-300 rounded-full checked:border-emerald-500 checked:bg-emerald-500 appearance-none transition-all"
+                                    className="peer h-6 w-6 border-2 border-gray-300 dark:border-gray-600 rounded-full checked:border-emerald-500 checked:bg-emerald-500 appearance-none transition-all bg-white dark:bg-gray-800"
                                 />
                                 <div className="absolute inset-0 m-auto w-2 h-2 rounded-full bg-white opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity"></div>
                             </div>
@@ -332,14 +332,14 @@ export default function AddSpotWizard({ spot, onCancel }: { spot?: any; onCancel
     };
 
     const renderStep3_Details = () => (
-        <div className="p-4 h-full bg-white flex flex-col">
-            <h2 className="text-xl font-bold text-gray-900 mb-6">Detalles del lugar</h2>
+        <div className="p-4 h-full bg-white dark:bg-gray-950 flex flex-col">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Detalles del lugar</h2>
 
             <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Título</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Título</label>
                 <input
                     type="text"
-                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
+                    className="w-full p-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-gray-900 dark:text-white"
                     placeholder="Ej. Parking del Lago"
                     value={formData.title}
                     onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
@@ -348,21 +348,21 @@ export default function AddSpotWizard({ spot, onCancel }: { spot?: any; onCancel
 
             <div className="flex gap-4 mb-4">
                 <div className="flex-1">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Precio</label>
-                    <label className="flex items-center gap-3 p-3 bg-gray-50 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-100 transition-colors">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Precio</label>
+                    <label className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
                         <input
                             type="checkbox"
                             checked={formData.isFree}
                             onChange={(e) => setFormData(prev => ({ ...prev, isFree: e.target.checked }))}
-                            className="w-5 h-5 rounded border-gray-300 text-emerald-500 focus:ring-emerald-500"
+                            className="w-5 h-5 rounded border-gray-300 dark:border-gray-600 text-emerald-500 focus:ring-emerald-500 bg-white dark:bg-gray-800"
                         />
-                        <span className="text-gray-700 font-medium">Es gratuito</span>
+                        <span className="text-gray-700 dark:text-gray-300 font-medium">Es gratuito</span>
                     </label>
                 </div>
 
                 <div className="flex-1">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Plazas</label>
-                    <div className="flex items-center gap-1 bg-gray-50 border border-gray-200 rounded-xl p-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Plazas</label>
+                    <div className="flex items-center gap-1 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-1">
                         {[1, 2, 3, 4, 5].map((num) => (
                             <button
                                 key={num}
@@ -370,7 +370,7 @@ export default function AddSpotWizard({ spot, onCancel }: { spot?: any; onCancel
                                 onClick={() => setFormData(prev => ({ ...prev, places: num }))}
                                 className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${formData.places === num
                                     ? "bg-emerald-500 text-white shadow-sm"
-                                    : "text-gray-500 hover:bg-gray-200"
+                                    : "text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-800"
                                     }`}
                             >
                                 {num}{num === 5 ? "+" : ""}
@@ -381,7 +381,7 @@ export default function AddSpotWizard({ spot, onCancel }: { spot?: any; onCancel
             </div>
 
             <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Valoración</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Valoración</label>
                 <div className="flex items-center gap-1">
                     {[1, 2, 3, 4, 5].map((star) => (
                         <button
@@ -399,9 +399,9 @@ export default function AddSpotWizard({ spot, onCancel }: { spot?: any; onCancel
             </div>
 
             <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Descripción</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Descripción</label>
                 <textarea
-                    className="w-full h-48 p-4 bg-gray-100 rounded-xl border-none focus:ring-2 focus:ring-emerald-500 text-gray-700 resize-none"
+                    className="w-full h-48 p-4 bg-gray-100 dark:bg-gray-900 rounded-xl border-none focus:ring-2 focus:ring-emerald-500 text-gray-700 dark:text-gray-200 resize-none"
                     placeholder="Descripción del lugar (vista, instalaciones...)"
                     value={formData.description}
                     onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
@@ -430,11 +430,11 @@ export default function AddSpotWizard({ spot, onCancel }: { spot?: any; onCancel
         ];
 
         return (
-            <div className="p-4 h-full bg-white overflow-y-auto">
-                <h2 className="text-xl font-bold text-gray-900 mb-6">Servicios cercanos</h2>
+            <div className="p-4 h-full bg-white dark:bg-gray-950 overflow-y-auto">
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Servicios cercanos</h2>
                 <div className="space-y-4">
                     {services.map(srv => (
-                        <label key={srv.id} className="flex items-center justify-between p-3 border-b border-gray-100 last:border-0 cursor-pointer hover:bg-gray-50 transition-colors">
+                        <label key={srv.id} className="flex items-center justify-between p-3 border-b border-gray-100 dark:border-gray-800 last:border-0 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors">
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center text-xl overflow-hidden p-1">
                                     {srv.icon.startsWith('/') ? (
@@ -443,7 +443,7 @@ export default function AddSpotWizard({ spot, onCancel }: { spot?: any; onCancel
                                         srv.icon
                                     )}
                                 </div>
-                                <span className="text-gray-700 font-medium">{srv.label}</span>
+                                <span className="text-gray-700 dark:text-gray-200 font-medium">{srv.label}</span>
                             </div>
                             <input
                                 type="checkbox"
@@ -452,7 +452,7 @@ export default function AddSpotWizard({ spot, onCancel }: { spot?: any; onCancel
                                     if (e.target.checked) setFormData(prev => ({ ...prev, services: [...prev.services, srv.label] }));
                                     else setFormData(prev => ({ ...prev, services: prev.services.filter(s => s !== srv.label) }));
                                 }}
-                                className="h-6 w-6 rounded border-gray-300 text-emerald-500 focus:ring-emerald-500"
+                                className="h-6 w-6 rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-emerald-500 focus:ring-emerald-500"
                             />
                         </label>
                     ))}
@@ -462,13 +462,13 @@ export default function AddSpotWizard({ spot, onCancel }: { spot?: any; onCancel
     }
 
     const renderStep5_Photos = () => (
-        <div className="p-4 h-full bg-white flex flex-col">
-            <h2 className="text-xl font-bold text-gray-900 mb-2">Fotos del lugar</h2>
-            <p className="text-sm text-gray-500 mb-6">Añade hasta 5 fotos. Clic para recortar/editar.</p>
+        <div className="p-4 h-full bg-white dark:bg-gray-950 flex flex-col">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Fotos del lugar</h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">Añade hasta 5 fotos. Clic para recortar/editar.</p>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-4">
                 {formData.images.map((img, idx) => (
-                    <div key={idx} className="relative aspect-square rounded-xl overflow-hidden border border-gray-200 group">
+                    <div key={idx} className="relative aspect-square rounded-xl overflow-hidden border border-gray-200 dark:border-gray-800 group">
                         <img
                             src={typeof img === 'string' ? img : URL.createObjectURL(img)}
                             alt={`Preview ${idx}`}
@@ -492,17 +492,17 @@ export default function AddSpotWizard({ spot, onCancel }: { spot?: any; onCancel
                 ))}
 
                 {formData.images.length < 5 && (
-                    <div className="aspect-square border-2 border-dashed border-gray-300 rounded-xl flex flex-col overflow-hidden">
+                    <div className="aspect-square border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl flex flex-col overflow-hidden">
                         <button
                             onClick={() => cameraInputRef.current?.click()}
-                            className="flex-1 w-full flex flex-col items-center justify-center gap-1 hover:bg-emerald-50 text-gray-500 hover:text-emerald-600 transition-colors border-b border-gray-100"
+                            className="flex-1 w-full flex flex-col items-center justify-center gap-1 hover:bg-emerald-50 dark:hover:bg-emerald-900/10 text-gray-500 dark:text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors border-b border-gray-100 dark:border-gray-800"
                         >
                             <Camera className="w-6 h-6" />
                             <span className="text-xs font-medium">Cámara</span>
                         </button>
                         <button
                             onClick={() => fileInputRef.current?.click()}
-                            className="flex-1 w-full flex flex-col items-center justify-center gap-1 hover:bg-emerald-50 text-gray-500 hover:text-emerald-600 transition-colors"
+                            className="flex-1 w-full flex flex-col items-center justify-center gap-1 hover:bg-emerald-50 dark:hover:bg-emerald-900/10 text-gray-500 dark:text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
                         >
                             <span className="text-2xl leading-none font-light">+</span>
                             <span className="text-xs font-medium">Galería</span>
