@@ -15,19 +15,19 @@ const LocationPickerMap = dynamic(() => import("./LocationPickerMap"), {
     ssr: false
 });
 
-export default function AddSpotWizard({ spot, onCancel }: { spot?: any; onCancel?: () => void }) {
+export default function AddSpotWizard({ spot, onCancel, initialPhoto, initialLat, initialLon }: { spot?: any; onCancel?: () => void; initialPhoto?: File; initialLat?: number; initialLon?: number }) {
     const router = useRouter();
     const [step, setStep] = useState(1);
     const [loadingLocation, setLoadingLocation] = useState(true);
     const [mounted, setMounted] = useState(false);
     const [formData, setFormData] = useState({
-        latitude: spot?.latitude ?? 40.416775,
-        longitude: spot?.longitude ?? -3.70379,
+        latitude: spot?.latitude ?? initialLat ?? 40.416775,
+        longitude: spot?.longitude ?? initialLon ?? -3.70379,
         category: spot?.category ?? "NATURE",
         title: spot?.title ?? "",
         description: spot?.description ?? "",
         services: (spot?.services?.map((s: any) => s.service.name) as string[]) ?? [] as string[],
-        images: (spot?.images?.map((img: any) => img.url) as (File | string)[]) ?? [] as (File | string)[],
+        images: (spot?.images?.map((img: any) => img.url) as (File | string)[]) ?? (initialPhoto ? [initialPhoto] : []) as (File | string)[],
         rating: spot?.rating ?? 0,
         isFree: spot?.isFree ?? true,
         places: spot?.places ?? 1,
@@ -122,7 +122,7 @@ export default function AddSpotWizard({ spot, onCancel }: { spot?: any; onCancel
 
     useEffect(() => {
         setMounted(true);
-        if (spot) {
+        if (spot || (initialLat !== undefined && initialLon !== undefined)) {
             setLoadingLocation(false);
             return;
         }
