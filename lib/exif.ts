@@ -48,8 +48,8 @@ export async function getGPSFromImage(file: File): Promise<{ lat: number, lon: n
 
             console.log("Calculated Lat:", latVal, "Ref:", latRef, "| Lon:", lonVal, "Ref:", lonRef);
 
-            if (latRef === 'S') latVal = -Math.abs(latVal);
-            if (lonRef === 'W') lonVal = -Math.abs(lonVal);
+            if (latRef.startsWith('S')) latVal = -Math.abs(latVal);
+            if (lonRef.startsWith('W')) lonVal = -Math.abs(lonVal);
 
             return { lat: latVal, lon: lonVal };
         }
