@@ -1,12 +1,15 @@
 /* eslint-disable */
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { X, Navigation, Star, Share2, MapPin, Map, Phone, Globe, Mail, ChevronLeft, ChevronRight, Flag, Trash2, Edit2, Maximize2, ExternalLink, Camera, Heart, Clock, User, AlertCircle, CheckCircle2, Mountain } from "lucide-react";
+import { X, Navigation, Star, Share2, MapPin, Map, Phone, Globe, Mail, ChevronLeft, ChevronRight, Flag, Trash2, Edit2, Maximize2, ExternalLink, Camera, Heart, Clock, User, AlertCircle, CheckCircle2, Mountain, Moon } from "lucide-react";
 import { getCategoryStyles } from "@/lib/categories";
 import { getServiceIconPath } from "@/lib/services";
 import FavoriteButton from "./FavoriteButton";
 import { deleteSpot, updateSpot } from "@/lib/actions";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
+
+const AddPernoctaModal = dynamic(() => import("./AddPernoctaModal"), { ssr: false });
 
 interface SpotDetailProps {
     spot: any;
@@ -24,6 +27,7 @@ export default function SpotDetail({ spot, onClose, onEdit }: SpotDetailProps) {
     const [activeIndex, setActiveIndex] = useState(0);
     const [lightboxOpen, setLightboxOpen] = useState(false);
     const [mounted, setMounted] = useState(false);
+    const [showPernocta, setShowPernocta] = useState(false);
 
     useEffect(() => {
         setMounted(true);
@@ -132,6 +136,13 @@ export default function SpotDetail({ spot, onClose, onEdit }: SpotDetailProps) {
                                 <Trash2 className="w-5 h-5" />
                             </div>
                             <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">Borrar</span>
+                        </div>
+
+                        <div className="flex flex-col items-center gap-2 group cursor-pointer" onClick={() => setShowPernocta(true)}>
+                            <div className="w-12 h-12 rounded-full bg-indigo-50 border-2 border-indigo-200 text-indigo-500 flex items-center justify-center shadow-md group-hover:bg-indigo-100 group-hover:border-indigo-400 transition-all">
+                                <Moon className="w-5 h-5" />
+                            </div>
+                            <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">Pernoctar</span>
                         </div>
                     </div>
 
@@ -380,6 +391,16 @@ export default function SpotDetail({ spot, onClose, onEdit }: SpotDetailProps) {
                     </div>
                 </div>,
                 document.body
+            )}
+
+            {/* Pernocta modal */}
+            {showPernocta && (
+                <AddPernoctaModal
+                    initialLat={spot.latitude}
+                    initialLon={spot.longitude}
+                    initialSpotId={spot.id}
+                    onClose={() => setShowPernocta(false)}
+                />
             )}
         </div>,
         document.body

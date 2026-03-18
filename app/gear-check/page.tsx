@@ -9,13 +9,18 @@ export default async function GearCheckPage() {
     const session = await getSession();
     if (!session) redirect("/login");
 
-    const items = await prisma.checklistItem.findMany({
-        where: {
-            userId: session.userId as number,
-            type: "GEAR",
-        },
-        orderBy: { createdAt: "asc" },
-    });
+    const userId = session.userId as number;
 
-    return <Checklist title="Equipamiento & Ropa 🎒" type="GEAR" items={items} />;
+    const [items, categories] = await Promise.all([
+        prisma.checklistItem.findMany({
+            where: { userId, type: "GEAR" },
+            orderBy: { createdAt: "asc" },
+        }),
+        prisma.checklistCategory.findMany({
+            where: { userId, type: "GEAR" },
+            orderBy: { createdAt: "asc" },
+        }),
+    ]);
+
+    return <Checklist title="Equipamiento & Ropa 🎒" type="GEAR" items={items} categories={categories} />;
 }

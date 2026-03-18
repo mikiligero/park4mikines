@@ -21,9 +21,11 @@ model User {
   role      String   @default("USER") // Was Role
   createdAt DateTime @default(now())
   
-  spots     Spot[]
-  favorites Favorite[]
-  checklistItems ChecklistItem[]
+  spots               Spot[]
+  favorites           Favorite[]
+  checklistItems      ChecklistItem[]
+  checklistCategories ChecklistCategory[]
+  pernoctas           Pernocta[]
 }
 
 model Spot {
@@ -43,6 +45,7 @@ model Spot {
   author      User     @relation(fields: [authorId], references: [id])
   
   favoritedBy Favorite[]
+  pernoctas   Pernocta[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
@@ -80,11 +83,41 @@ model Favorite {
 }
 
 model ChecklistItem {
-  id        Int      @id @default(autoincrement())
-  text      String
-  checked   Boolean  @default(false)
-  type      String   // Was ItemType
+  id         Int                @id @default(autoincrement())
+  text       String
+  checked    Boolean            @default(false)
+  type       String             // "FOOD" | "GEAR"
+  userId     Int
+  user       User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categoryId Int?
+  category   ChecklistCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  createdAt  DateTime           @default(now())
+}
+
+model ChecklistCategory {
+  id        Int             @id @default(autoincrement())
+  name      String
+  type      String          // "FOOD" | "GEAR"
   userId    Int
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items     ChecklistItem[]
+  createdAt DateTime        @default(now())
+}
+
+model Pernocta {
+  id           Int      @id @default(autoincrement())
+  date         DateTime
+  latitude     Float
+  longitude    Float
+  notes        String?
+  weather      String?
+  cost         Float?   @default(0)
+  locationName String?
+  province     String?
+  country      String?
+  spotId       Int?
+  spot         Spot?    @relation(fields: [spotId], references: [id], onDelete: SetNull)
+  userId       Int
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
 }

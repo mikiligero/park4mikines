@@ -244,7 +244,7 @@ export async function logout() {
     redirect("/login");
 }
 
-export async function addChecklistItem(text: string, type: "FOOD" | "GEAR") {
+export async function addChecklistItem(text: string, type: "FOOD" | "GEAR", categoryId?: number | null) {
     const session = await getSession();
     if (!session) redirect("/login");
 
@@ -253,6 +253,7 @@ export async function addChecklistItem(text: string, type: "FOOD" | "GEAR") {
             text,
             type,
             userId: session.userId as number,
+            ...(categoryId ? { categoryId } : {}),
         },
     });
 
@@ -291,7 +292,7 @@ export async function deleteChecklistItem(id: number, type: "FOOD" | "GEAR") {
 }
 
 
-export async function resetChecklistItems(type: "FOOD" | "GEAR") {
+export async function resetChecklistItems(type: "FOOD" | "GEAR", categoryId?: number | null) {
     const session = await getSession();
     if (!session) redirect("/login");
 
@@ -299,9 +300,40 @@ export async function resetChecklistItems(type: "FOOD" | "GEAR") {
         where: {
             userId: session.userId as number,
             type,
+            ...(categoryId ? { categoryId } : {}),
         },
         data: { checked: false },
     });
+
+    const path = type === "FOOD" ? "/food-check" : "/gear-check";
+    revalidatePath(path);
+}
+
+export async function addChecklistCategory(name: string, type: "FOOD" | "GEAR") {
+    const session = await getSession();
+    if (!session) redirect("/login");
+
+    const category = await prisma.checklistCategory.create({
+        data: {
+            name,
+            type,
+            userId: session.userId as number,
+        },
+    });
+
+    const path = type === "FOOD" ? "/food-check" : "/gear-check";
+    revalidatePath(path);
+    return category;
+}
+
+export async function deleteChecklistCategory(id: number, type: "FOOD" | "GEAR") {
+    const session = await getSession();
+    if (!session) redirect("/login");
+
+    const category = await prisma.checklistCategory.findUnique({ where: { id } });
+    if (!category || category.userId !== (session.userId as number)) return;
+
+    await prisma.checklistCategory.delete({ where: { id } });
 
     const path = type === "FOOD" ? "/food-check" : "/gear-check";
     revalidatePath(path);
@@ -392,4 +424,104 @@ export async function changePassword(formData: FormData) {
     });
 
     return { success: true };
+}
+
+// ─── Pernoctas ─────────────────────────────────────────────────────────────
+import { reverseGeocode } from "./geocode";
+
+export async function addPernocta(data: {
+    date: string;
+    latitude: number;
+    longitude: number;
+    notes?: string;
+    weather?: string;
+    cost?: number;
+    spotId?: number | null;
+}) {
+    const session = await getSession();
+    if (!session) redirect("/login");
+
+    const geo = await reverseGeocode(data.latitude, data.longitude);
+
+    await prisma.pernocta.create({
+        data: {
+            date: new Date(data.date),
+            latitude: data.latitude,
+            longitude: data.longitude,
+            notes: data.notes || null,
+            weather: data.weather || null,
+            cost: data.cost ?? 0,
+            locationName: geo?.locationName || null,
+            province: geo?.province || null,
+            country: geo?.country || null,
+            spotId: data.spotId || null,
+            userId: session.userId as number,
+        },
+    });
+
+    revalidatePath("/pernoctas");
+}
+
+export async function updatePernocta(id: number, data: {
+    date: string;
+    latitude: number;
+    longitude: number;
+    notes?: string;
+    weather?: string;
+    cost?: number;
+    spotId?: number | null;
+}) {
+    const session = await getSession();
+    if (!session) redirect("/login");
+
+    const pernocta = await prisma.pernocta.findUnique({ where: { id } });
+    if (!pernocta || pernocta.userId !== (session.userId as number)) return;
+
+    const geo = await reverseGeocode(data.latitude, data.longitude);
+
+    await prisma.pernocta.update({
+        where: { id },
+        data: {
+            date: new Date(data.date),
+            latitude: data.latitude,
+            longitude: data.longitude,
+            notes: data.notes || null,
+            weather: data.weather || null,
+            cost: data.cost ?? 0,
+            locationName: geo?.locationName || null,
+            province: geo?.province || null,
+            country: geo?.country || null,
+            spotId: data.spotId || null,
+        },
+    });
+
+    revalidatePath("/pernoctas");
+}
+
+export async function deletePernocta(id: number) {
+    const session = await getSession();
+    if (!session) redirect("/login");
+
+    const pernocta = await prisma.pernocta.findUnique({ where: { id } });
+    if (!pernocta || pernocta.userId !== (session.userId as number)) return;
+
+    await prisma.pernocta.delete({ where: { id } });
+    revalidatePath("/pernoctas");
+}
+
+export async function getPernoctas() {
+    const session = await getSession();
+    if (!session) return [];
+
+    const userId = session.userId as number;
+    const pernoctas = await prisma.pernocta.findMany({
+        where: { userId },
+        orderBy: { date: "desc" },
+    });
+
+    return pernoctas.map((p) => ({
+        ...p,
+        date: p.date.toISOString(),
+        createdAt: p.createdAt.toISOString(),
+    }));
 }

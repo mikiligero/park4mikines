@@ -13,7 +13,8 @@ import {
     Home,
     UtensilsCrossed,
     Backpack,
-    Settings
+    Settings,
+    Moon
 } from "lucide-react";
 import { logout } from "@/lib/actions";
 
@@ -25,6 +26,7 @@ export default function Sidebar() {
         { name: "Puntos de Interés", href: "/", icon: MapIcon },
         { name: "Food Check", href: "/food-check", icon: UtensilsCrossed },
         { name: "Gear Check", href: "/gear-check", icon: Backpack },
+        { name: "Pernoctas", href: "/pernoctas", icon: Moon },
         { name: "Configuración", href: "/settings", icon: Settings },
     ];
 

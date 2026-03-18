@@ -1,11 +1,12 @@
 /* eslint-disable */
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
-import { Filter, X, Search, Star, MapPin, Crosshair, Heart, List, Map as MapIcon } from "lucide-react";
+import { Filter, X, Search, Star, MapPin, Crosshair, Heart, List, Map as MapIcon, Moon } from "lucide-react";
 import FavoriteButton from "../FavoriteButton";
 import AddSpotWizard from "../AddSpotWizard";
 import SpotList from "../SpotList";
@@ -72,25 +73,54 @@ function MapEvents({ setBounds }: { setBounds: (bounds: L.LatLngBounds) => void 
 import SpotDetail from "../SpotDetail"; // Ensure path is correct
 
 // Inner component to control map movement from outside
-function MapController({ center }: { center: [number, number] | null }) {
+function MapController({ center, zoom }: { center: [number, number] | null, zoom: number }) {
     const map = useMap();
     useEffect(() => {
         if (center) {
-            map.flyTo(center, 12, { animate: true });
+            map.flyTo(center, zoom, { animate: true });
         }
-    }, [center, map]);
+    }, [center, zoom, map]);
     return null;
 }
 
-export default function Map({ spots }: { spots: any[] }) {
+export default function Map({ spots, pernoctas = [] }: { spots: any[], pernoctas?: any[] }) {
+    return (
+        <Suspense fallback={null}>
+            <MapContent spots={spots} pernoctas={pernoctas} />
+        </Suspense>
+    );
+}
+
+function MapContent({ spots, pernoctas = [] }: { spots: any[], pernoctas?: any[] }) {
+    const searchParams = useSearchParams();
     const [showFilters, setShowFilters] = useState(false);
     const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
     const [selectedServices, setSelectedServices] = useState<string[]>([]);
     const [minRating, setMinRating] = useState(0);
     const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+    const [showPernoctas, setShowPernoctas] = useState(false);
+    const [showSpots, setShowSpots] = useState(true);
     const [initialPosition, setInitialPosition] = useState<[number, number] | null>(null);
+    const [zoom, setZoom] = useState(14);
     const [selectedSpot, setSelectedSpot] = useState<any | null>(null);
     const [editingSpot, setEditingSpot] = useState<any | null>(null);
+
+    // Initial load from query params
+    useEffect(() => {
+        if (searchParams.get("pernoctas") === "true") {
+            setShowPernoctas(true);
+            setShowSpots(false);
+            setInitialPosition([40.0, -3.7]); // Centro de la Península
+            setZoom(6); // Zoom para ver la península
+        } else {
+            // Reset to default "Spots only" view when navigating normally
+            setShowSpots(true);
+            setShowPernoctas(false);
+            
+            // If we were on the peninsula view, go back to a more local view
+            setZoom(prev => prev === 6 ? 14 : prev);
+        }
+    }, [searchParams]);
 
     // Search State
     const [searchQuery, setSearchQuery] = useState("");
@@ -110,6 +140,7 @@ export default function Map({ spots }: { spots: any[] }) {
 
     // Filter spots based on criteria
     const filteredSpots = spots.filter(spot => {
+        if (!showSpots) return false;
         if (showFavoritesOnly && !spot.isFavorite) return false;
         if (selectedCategories.length > 0 && !selectedCategories.includes(spot.category)) return false;
         if (minRating > 0 && (spot.rating || 0) < minRating) return false;
@@ -260,7 +291,7 @@ export default function Map({ spots }: { spots: any[] }) {
     return (
         <div className="relative h-screen w-full z-0">
             {/* Disabled zoomControl to mimic clean UI, map controls usually top-left by default */}
-            <MapContainer center={initialPosition} zoom={14} scrollWheelZoom={true} className="h-full w-full" zoomControl={false}>
+            <MapContainer center={initialPosition} zoom={zoom} scrollWheelZoom={true} className="h-full w-full" zoomControl={false}>
                 <MapEvents setBounds={setBounds} />
                 <TileLayer
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -268,7 +299,7 @@ export default function Map({ spots }: { spots: any[] }) {
                 />
 
                 {/* MapController handles programmatic moves */}
-                <MapController center={initialPosition} />
+                <MapController center={initialPosition} zoom={zoom} />
 
                 {/* Blue GPS position dot */}
                 <LocationMarker position={userPosition} />
@@ -284,6 +315,41 @@ export default function Map({ spots }: { spots: any[] }) {
                             },
                         }}
                     >
+                    </Marker>
+                ))}
+
+                {showPernoctas && pernoctas?.map((pernocta) => (
+                    <Marker
+                        key={`pernocta-${pernocta.id}`}
+                        position={[pernocta.latitude, pernocta.longitude]}
+                        icon={L.divIcon({
+                            className: "pernocta-map-marker",
+                            html: `
+                                <div class="relative group">
+                                    <div class="w-8 h-8 select-none transform transition-transform group-hover:scale-110">
+                                        <img src="/icons/pernocta.svg" alt="Pernocta" class="w-full h-full drop-shadow-md" />
+                                    </div>
+                                </div>
+                            `,
+                            iconSize: [32, 32],
+                            iconAnchor: [16, 16],
+                            popupAnchor: [0, -16],
+                        })}
+                    >
+                        <Popup>
+                            <div className="p-1">
+                                <div className="font-bold text-indigo-600">Pernocta 🌙</div>
+                                <div className="text-xs text-gray-500 font-medium">
+                                    {new Date(pernocta.date).toLocaleDateString("es-ES", { day: 'numeric', month: 'long', year: 'numeric' })}
+                                </div>
+                                {pernocta.locationName && (
+                                    <div className="text-xs mt-1 font-semibold">{pernocta.locationName}</div>
+                                )}
+                                {pernocta.notes && (
+                                    <div className="text-[10px] mt-1 text-gray-600 italic line-clamp-2">"{pernocta.notes}"</div>
+                                )}
+                            </div>
+                        </Popup>
                     </Marker>
                 ))}
             </MapContainer>
@@ -437,7 +503,7 @@ export default function Map({ spots }: { spots: any[] }) {
                                     <h3 className="font-semibold text-gray-800 dark:text-gray-200 mb-3">Preferencias:</h3>
 
                                     {/* Favorites Toggle */}
-                                    <label className="flex items-center justify-between p-3 bg-red-50 dark:bg-red-900/10 rounded-xl cursor-pointer mb-4 border border-red-100 dark:border-red-900/20">
+                                    <label className="flex items-center justify-between p-3 bg-red-50 dark:bg-red-900/10 rounded-xl cursor-pointer mb-2 border border-red-100 dark:border-red-900/20">
                                         <div className="flex items-center gap-3">
                                             <div className="w-8 h-8 rounded-full bg-white dark:bg-red-900/30 flex items-center justify-center text-red-500 shadow-sm border border-red-100 dark:border-red-900/10">
                                                 <Heart className={`w-5 h-5 ${showFavoritesOnly ? "fill-current" : ""}`} />
@@ -449,6 +515,38 @@ export default function Map({ spots }: { spots: any[] }) {
                                             checked={showFavoritesOnly}
                                             onChange={(e) => setShowFavoritesOnly(e.target.checked)}
                                             className="w-5 h-5 rounded border-gray-300 text-red-500 focus:ring-red-500"
+                                        />
+                                    </label>
+
+                                    {/* Spots Toggle */}
+                                    <label className="flex items-center justify-between p-3 bg-emerald-50 dark:bg-emerald-900/10 rounded-xl cursor-pointer mb-2 border border-emerald-100 dark:border-emerald-900/20">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-full bg-white dark:bg-emerald-900/30 flex items-center justify-center text-emerald-500 shadow-sm border border-emerald-100 dark:border-emerald-900/10">
+                                                <MapPin className="w-5 h-5" />
+                                            </div>
+                                            <span className="font-medium text-gray-900 dark:text-white">Ver Sitios Spot</span>
+                                        </div>
+                                        <input
+                                            type="checkbox"
+                                            checked={showSpots}
+                                            onChange={(e) => setShowSpots(e.target.checked)}
+                                            className="w-5 h-5 rounded border-gray-300 text-emerald-500 focus:ring-emerald-500"
+                                        />
+                                    </label>
+
+                                    {/* Pernoctas Toggle */}
+                                    <label className="flex items-center justify-between p-3 bg-indigo-50 dark:bg-indigo-900/10 rounded-xl cursor-pointer mb-4 border border-indigo-100 dark:border-indigo-900/20">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-full bg-white dark:bg-indigo-900/30 flex items-center justify-center text-indigo-500 shadow-sm border border-indigo-100 dark:border-indigo-900/10">
+                                                <Moon className="w-5 h-5" />
+                                            </div>
+                                            <span className="font-medium text-gray-900 dark:text-white">Ver Pernoctas</span>
+                                        </div>
+                                        <input
+                                            type="checkbox"
+                                            checked={showPernoctas}
+                                            onChange={(e) => setShowPernoctas(e.target.checked)}
+                                            className="w-5 h-5 rounded border-gray-300 text-indigo-500 focus:ring-indigo-500"
                                         />
                                     </label>
 
