@@ -5,16 +5,17 @@ import ProfileSettings from "./ProfileSettings";
 import AppearanceSettings from "./AppearanceSettings";
 import MaintenanceSettings from "./MaintenanceSettings";
 import BackupSettings from "./BackupSettings";
-import { User, Monitor, Brush, Database } from "lucide-react";
+import ListSettings from "./ListSettings";
+import { User, Monitor, Brush, Database, List } from "lucide-react";
 
-export default function SettingsClient({ user, isAdmin }: { user: any, isAdmin: boolean }) { // eslint-disable-line @typescript-eslint/no-explicit-any
+export default function SettingsClient({ user, isAdmin, lists }: { user: any, isAdmin: boolean, lists?: any[] }) { // eslint-disable-line @typescript-eslint/no-explicit-any
     const [activeTab, setActiveTab] = useState("profile");
-
 
     const menuItems = [
         { id: "profile", name: "Mi Perfil", icon: User, color: "text-purple-600" },
         { id: "appearance", name: "Apariencia", icon: Monitor, color: "text-blue-600" },
         ...(isAdmin ? [
+            { id: "lists", name: "Listas", icon: List, color: "text-pink-600" },
             { id: "maintenance", name: "Mantenimiento", icon: Brush, color: "text-orange-600" },
             { id: "backups", name: "Copia de Seguridad", icon: Database, color: "text-emerald-600" },
         ] : []),
@@ -46,6 +47,7 @@ export default function SettingsClient({ user, isAdmin }: { user: any, isAdmin: 
             {/* Main Content Area */}
             {activeTab === "profile" && <ProfileSettings user={user} />}
             {activeTab === "appearance" && <AppearanceSettings />}
+            {activeTab === "lists" && isAdmin && lists && <ListSettings lists={lists} />}
             {activeTab === "maintenance" && <MaintenanceSettings />}
             {activeTab === "backups" && <BackupSettings />}
 

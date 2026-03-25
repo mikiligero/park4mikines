@@ -244,25 +244,23 @@ export async function logout() {
     redirect("/login");
 }
 
-export async function addChecklistItem(text: string, type: "FOOD" | "GEAR", categoryId?: number | null) {
+export async function addChecklistItem(text: string, type: string, categoryId?: number | null) {
     const session = await getSession();
     if (!session) redirect("/login");
 
     await prisma.checklistItem.create({
         data: {
             text,
-            type,
+            type: type.toUpperCase(),
             userId: session.userId as number,
             ...(categoryId ? { categoryId } : {}),
         },
     });
 
-    // Determine path based on type for revalidation
-    const path = type === "FOOD" ? "/food-check" : "/gear-check";
-    revalidatePath(path);
+    revalidatePath(`/lists/${type.toLowerCase()}`);
 }
 
-export async function toggleChecklistItem(id: number, checked: boolean, type: "FOOD" | "GEAR") {
+export async function toggleChecklistItem(id: number, checked: boolean, type: string) {
     const session = await getSession();
     if (!session) redirect("/login");
 
@@ -274,11 +272,10 @@ export async function toggleChecklistItem(id: number, checked: boolean, type: "F
         data: { checked },
     });
 
-    const path = type === "FOOD" ? "/food-check" : "/gear-check";
-    revalidatePath(path);
+    revalidatePath(`/lists/${type.toLowerCase()}`);
 }
 
-export async function deleteChecklistItem(id: number, type: "FOOD" | "GEAR") {
+export async function deleteChecklistItem(id: number, type: string) {
     const session = await getSession();
     if (!session) redirect("/login");
 
@@ -287,46 +284,43 @@ export async function deleteChecklistItem(id: number, type: "FOOD" | "GEAR") {
 
     await prisma.checklistItem.delete({ where: { id } });
 
-    const path = type === "FOOD" ? "/food-check" : "/gear-check";
-    revalidatePath(path);
+    revalidatePath(`/lists/${type.toLowerCase()}`);
 }
 
 
-export async function resetChecklistItems(type: "FOOD" | "GEAR", categoryId?: number | null) {
+export async function resetChecklistItems(type: string, categoryId?: number | null) {
     const session = await getSession();
     if (!session) redirect("/login");
 
     await prisma.checklistItem.updateMany({
         where: {
             userId: session.userId as number,
-            type,
+            type: type.toUpperCase(),
             ...(categoryId ? { categoryId } : {}),
         },
         data: { checked: false },
     });
 
-    const path = type === "FOOD" ? "/food-check" : "/gear-check";
-    revalidatePath(path);
+    revalidatePath(`/lists/${type.toLowerCase()}`);
 }
 
-export async function addChecklistCategory(name: string, type: "FOOD" | "GEAR") {
+export async function addChecklistCategory(name: string, type: string) {
     const session = await getSession();
     if (!session) redirect("/login");
 
     const category = await prisma.checklistCategory.create({
         data: {
             name,
-            type,
+            type: type.toUpperCase(),
             userId: session.userId as number,
         },
     });
 
-    const path = type === "FOOD" ? "/food-check" : "/gear-check";
-    revalidatePath(path);
+    revalidatePath(`/lists/${type.toLowerCase()}`);
     return category;
 }
 
-export async function deleteChecklistCategory(id: number, type: "FOOD" | "GEAR") {
+export async function deleteChecklistCategory(id: number, type: string) {
     const session = await getSession();
     if (!session) redirect("/login");
 
@@ -335,8 +329,7 @@ export async function deleteChecklistCategory(id: number, type: "FOOD" | "GEAR")
 
     await prisma.checklistCategory.delete({ where: { id } });
 
-    const path = type === "FOOD" ? "/food-check" : "/gear-check";
-    revalidatePath(path);
+    revalidatePath(`/lists/${type.toLowerCase()}`);
 }
 
 export async function deleteSpot(id: number) {
@@ -524,4 +517,95 @@ export async function getPernoctas() {
         date: p.date.toISOString(),
         createdAt: p.createdAt.toISOString(),
     }));
+}
+
+// ─── Configurable Lists ──────────────────────────────────────────────────
+
+export async function createList(data: { name: string; type: string; icon: string; isVisible: boolean }) {
+    const session = await getSession();
+    if (!session || session.role !== "ADMIN") return { success: false, error: "Unauthorized" };
+
+    try {
+        await prisma.configurableList.create({
+            data: {
+                name: data.name,
+                type: data.type.toUpperCase().replace(/\s+/g, "_"),
+                icon: data.icon,
+                isVisible: data.isVisible,
+            },
+        });
+        revalidatePath("/settings");
+        revalidatePath("/");
+        return { success: true };
+    } catch (error) {
+        console.error("Error creating list:", error);
+        return { success: false, error: "Error al crear la lista. El tipo podría ya existir." };
+    }
+}
+
+export async function updateList(id: number, data: { name: string; icon: string }) {
+    const session = await getSession();
+    if (!session || session.role !== "ADMIN") return { success: false, error: "Unauthorized" };
+
+    try {
+        await prisma.configurableList.update({
+            where: { id },
+            data: {
+                name: data.name,
+                icon: data.icon,
+            },
+        });
+        revalidatePath("/settings");
+        revalidatePath("/");
+        return { success: true };
+    } catch (error) {
+        console.error("Error updating list:", error);
+        return { success: false, error: "Error al actualizar la lista." };
+    }
+}
+
+export async function toggleListVisibility(id: number, isVisible: boolean) {
+    const session = await getSession();
+    if (!session || session.role !== "ADMIN") return { success: false, error: "Unauthorized" };
+
+    try {
+        await prisma.configurableList.update({
+            where: { id },
+            data: { isVisible },
+        });
+        revalidatePath("/settings");
+        revalidatePath("/");
+        return { success: true };
+    } catch (error) {
+        console.error("Error toggling list visibility:", error);
+        return { success: false, error: "Error al cambiar la visibilidad." };
+    }
+}
+
+export async function deleteList(id: number) {
+    const session = await getSession();
+    if (!session || session.role !== "ADMIN") return { success: false, error: "Unauthorized" };
+
+    try {
+        const listToDelete = await prisma.configurableList.findUnique({
+            where: { id },
+        });
+
+        if (!listToDelete) {
+            return { success: false, error: "Lista no encontrada." };
+        }
+
+        await prisma.$transaction([
+            prisma.checklistItem.deleteMany({ where: { type: listToDelete.type } }),
+            prisma.checklistCategory.deleteMany({ where: { type: listToDelete.type } }),
+            prisma.configurableList.delete({ where: { id } }),
+        ]);
+
+        revalidatePath("/settings");
+        revalidatePath("/");
+        return { success: true };
+    } catch (error) {
+        console.error("Error deleting list:", error);
+        return { success: false, error: "Error al eliminar la lista y sus elementos." };
+    }
 }

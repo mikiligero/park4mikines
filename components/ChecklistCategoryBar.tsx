@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { Plus, X, Tag } from "lucide-react";
 import { addChecklistCategory, deleteChecklistCategory } from "@/lib/actions";
 
-type ItemType = "FOOD" | "GEAR";
+type ItemType = string;
 
 interface Category {
     id: number;

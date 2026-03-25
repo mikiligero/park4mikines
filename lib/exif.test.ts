@@ -11,7 +11,7 @@ vi.mock('exifreader', () => ({
 
 describe('getGPSFromImage', () => {
     it('returns null if no tags are found', async () => {
-        vi.mocked(ExifReader.load).mockResolvedValueOnce({});
+        vi.mocked(ExifReader.load).mockResolvedValueOnce({} as any);
         const result = await getGPSFromImage(new File([], 'test.jpg'));
         expect(result).toBeNull();
     });

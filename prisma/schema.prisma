@@ -121,3 +121,13 @@ model Pernocta {
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt    DateTime @default(now())
 }
+
+model ConfigurableList {
+  id        Int      @id @default(autoincrement())
+  name      String
+  type      String   @unique
+  icon      String
+  isVisible Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

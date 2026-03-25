@@ -17,6 +17,10 @@ export default async function SettingsPage() {
 
     if (!user) redirect("/login");
 
+    const lists = await prisma.configurableList.findMany({
+        orderBy: { createdAt: "asc" }
+    });
+
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-20 md:pl-64">
             {/* Mobile Header */}
@@ -38,6 +42,7 @@ export default async function SettingsPage() {
                 <SettingsClient
                     user={user}
                     isAdmin={session.role === "ADMIN"}
+                    lists={lists}
                 />
             </main>
         </div>

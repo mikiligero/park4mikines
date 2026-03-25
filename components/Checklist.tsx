@@ -5,7 +5,7 @@ import { Plus, Trash2, CheckCircle, Circle, RotateCcw } from "lucide-react";
 import { addChecklistItem, toggleChecklistItem, deleteChecklistItem, resetChecklistItems } from "@/lib/actions";
 import ChecklistCategoryBar from "@/components/ChecklistCategoryBar";
 
-type ItemType = "FOOD" | "GEAR";
+type ItemType = string;
 
 interface Category {
     id: number;

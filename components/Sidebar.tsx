@@ -7,25 +7,30 @@ import {
     Menu,
     X,
     Map as MapIcon,
-    User,
     LogOut,
     ChevronRight,
-    Home,
-    UtensilsCrossed,
-    Backpack,
-    Settings,
-    Moon
+    Moon,
+    Settings
 } from "lucide-react";
+import * as LucideIcons from "lucide-react";
 import { logout } from "@/lib/actions";
 
-export default function Sidebar() {
+export default function Sidebar({ lists = [] }: { lists?: any[] }) {
     const [isOpen, setIsOpen] = useState(false);
     const pathname = usePathname();
 
+    const dynamicLists = lists.map(list => {
+        const IconComponent = (LucideIcons as any)[list.icon] || LucideIcons.List;
+        return {
+            name: list.name,
+            href: `/lists/${list.type}`,
+            icon: IconComponent
+        };
+    });
+
     const menuItems = [
         { name: "Puntos de Interés", href: "/", icon: MapIcon },
-        { name: "Food Check", href: "/food-check", icon: UtensilsCrossed },
-        { name: "Gear Check", href: "/gear-check", icon: Backpack },
+        ...dynamicLists,
         { name: "Pernoctas", href: "/pernoctas", icon: Moon },
         { name: "Configuración", href: "/settings", icon: Settings },
     ];

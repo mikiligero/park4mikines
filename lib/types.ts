@@ -16,8 +16,3 @@ export enum SpotCategory {
     PARKING_DAY = "PARKING_DAY",
     CANDIDATO = "CANDIDATO"
 }
-
-export enum ItemType {
-    FOOD = "FOOD",
-    GEAR = "GEAR"
-}
