@@ -25,18 +25,12 @@ export const viewport: Viewport = {
 
 import LayoutWrapper from "@/components/LayoutWrapper";
 import { ThemeProvider } from "@/components/theme-provider";
-import prisma from "@/lib/prisma";
 
-export default async function RootLayout({
+export default function RootLayout({
     children,
 }: Readonly<{
     children: React.ReactNode;
 }>) {
-    const lists = await prisma.configurableList.findMany({
-        where: { isVisible: true },
-        orderBy: { createdAt: "asc" }
-    });
-
     return (
         <html lang="es" suppressHydrationWarning>
             <body className={inter.className}>
@@ -46,7 +40,7 @@ export default async function RootLayout({
                     enableSystem
                     disableTransitionOnChange
                 >
-                    <LayoutWrapper lists={lists}>{children}</LayoutWrapper>
+                    <LayoutWrapper>{children}</LayoutWrapper>
                 </ThemeProvider>
             </body>
         </html>

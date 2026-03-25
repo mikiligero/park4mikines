@@ -609,3 +609,10 @@ export async function deleteList(id: number) {
         return { success: false, error: "Error al eliminar la lista y sus elementos." };
     }
 }
+
+export async function getVisibleLists() {
+    return prisma.configurableList.findMany({
+        where: { isVisible: true },
+        orderBy: { createdAt: "asc" }
+    });
+}

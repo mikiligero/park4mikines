@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -13,11 +13,16 @@ import {
     Settings
 } from "lucide-react";
 import * as LucideIcons from "lucide-react";
-import { logout } from "@/lib/actions";
+import { logout, getVisibleLists } from "@/lib/actions";
 
-export default function Sidebar({ lists = [] }: { lists?: any[] }) {
+export default function Sidebar() {
     const [isOpen, setIsOpen] = useState(false);
+    const [lists, setLists] = useState<any[]>([]);
     const pathname = usePathname();
+
+    useEffect(() => {
+        getVisibleLists().then(setLists);
+    }, []);
 
     const dynamicLists = lists.map(list => {
         const IconComponent = (LucideIcons as any)[list.icon] || LucideIcons.List;
