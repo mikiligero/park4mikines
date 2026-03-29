@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Plus, Trash2, CheckCircle, Circle, RotateCcw } from "lucide-react";
-import { addChecklistItem, toggleChecklistItem, deleteChecklistItem, resetChecklistItems, deleteChecklistCategory } from "@/lib/actions";
+import { useState, useEffect, useRef } from "react";
+import { Plus, Trash2, CheckCircle, Circle, RotateCcw, Pencil, Check, X } from "lucide-react";
+import { addChecklistItem, toggleChecklistItem, deleteChecklistItem, resetChecklistItems, deleteChecklistCategory, renameChecklistItem } from "@/lib/actions";
 import ChecklistCategoryBar from "@/components/ChecklistCategoryBar";
 
 type ItemType = string;
@@ -30,6 +30,7 @@ interface ChecklistProps {
 function InlineAddForm({ type, categoryId }: { type: string, categoryId: number | null }) {
     const [text, setText] = useState("");
     const [isAdding, setIsAdding] = useState(false);
+    const inputRef = useRef<HTMLInputElement>(null);
 
     const handleAdd = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -40,12 +41,14 @@ function InlineAddForm({ type, categoryId }: { type: string, categoryId: number 
             setText("");
         } finally {
             setIsAdding(false);
+            setTimeout(() => inputRef.current?.focus(), 10);
         }
     };
 
     return (
         <form onSubmit={handleAdd} className="mt-2 relative">
             <input
+                ref={inputRef}
                 type="text"
                 value={text}
                 onChange={(e) => setText(e.target.value)}
@@ -69,6 +72,9 @@ export default function Checklist({ title, type, items, categories }: ChecklistP
     const [isResetting, setIsResetting] = useState(false);
     const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>([]);
     const [isLoaded, setIsLoaded] = useState(false);
+
+    const [editingItemId, setEditingItemId] = useState<number | null>(null);
+    const [editingText, setEditingText] = useState("");
 
     // Load from localStorage on mount
     useEffect(() => {
@@ -243,29 +249,98 @@ export default function Checklist({ title, type, items, categories }: ChecklistP
                                                         : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-sm hover:border-indigo-200 dark:hover:border-indigo-900"
                                                 }`}
                                             >
-                                                <button
-                                                    onClick={() => toggleChecklistItem(item.id, !item.checked, type)}
-                                                    className="flex items-center gap-3 flex-1 text-left"
-                                                >
-                                                    <div className={`transition-colors flex-shrink-0 ${item.checked ? "text-indigo-400" : "text-gray-300 dark:text-gray-500 group-hover:text-indigo-500"}`}>
+                                                <div className="flex items-center gap-3 flex-1 text-left min-w-0">
+                                                    <button
+                                                        onClick={() => toggleChecklistItem(item.id, !item.checked, type)}
+                                                        className={`transition-colors flex-shrink-0 mt-0.5 ${item.checked ? "text-indigo-400" : "text-gray-300 dark:text-gray-500 hover:text-indigo-500"}`}
+                                                    >
                                                         {item.checked ? <CheckCircle className="h-5 w-5" /> : <Circle className="h-5 w-5" />}
-                                                    </div>
-                                                    <span className={`font-medium transition-all ${item.checked ? "line-through decoration-indigo-200 opacity-60" : ""}`}>
-                                                        {item.text}
-                                                    </span>
-                                                </button>
+                                                    </button>
+                                                    
+                                                    {editingItemId === item.id ? (
+                                                        <div className="flex-1 flex gap-1.5 items-center mr-2" onClick={(e) => e.stopPropagation()}>
+                                                            <input
+                                                                type="text"
+                                                                value={editingText}
+                                                                onChange={(e) => setEditingText(e.target.value)}
+                                                                onKeyDown={async (e) => {
+                                                                    if (e.key === "Enter") {
+                                                                        e.preventDefault();
+                                                                        if (editingText.trim() && editingText !== item.text) {
+                                                                            setEditingItemId(null);
+                                                                            await renameChecklistItem(item.id, editingText.trim(), type);
+                                                                        } else {
+                                                                            setEditingItemId(null);
+                                                                        }
+                                                                    } else if (e.key === "Escape") {
+                                                                        setEditingItemId(null);
+                                                                    }
+                                                                }}
+                                                                autoFocus
+                                                                className="flex-1 w-full px-2 py-1 text-sm rounded-lg bg-white dark:bg-gray-800 border border-indigo-300 dark:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-inner"
+                                                            />
+                                                            <button
+                                                                type="button"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setEditingItemId(null);
+                                                                }}
+                                                                className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                                                            >
+                                                                <X className="w-4 h-4" />
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={async (e) => {
+                                                                    e.stopPropagation();
+                                                                    if (editingText.trim() && editingText !== item.text) {
+                                                                        setEditingItemId(null);
+                                                                        await renameChecklistItem(item.id, editingText.trim(), type);
+                                                                    } else {
+                                                                        setEditingItemId(null);
+                                                                    }
+                                                                }}
+                                                                className="p-1.5 text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 rounded-md hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors"
+                                                            >
+                                                                <Check className="w-4 h-4" />
+                                                            </button>
+                                                        </div>
+                                                    ) : (
+                                                        <button 
+                                                            onClick={() => toggleChecklistItem(item.id, !item.checked, type)}
+                                                            className={`font-medium transition-all text-left truncate ${item.checked ? "line-through decoration-indigo-200 opacity-60" : ""}`}
+                                                        >
+                                                            {item.text}
+                                                        </button>
+                                                    )}
+                                                </div>
 
-                                                <button
-                                                    onClick={() => {
-                                                        if (confirm(`¿Seguro que quieres eliminar "${item.text}"?`)) {
-                                                            deleteChecklistItem(item.id, type);
-                                                        }
-                                                    }}
-                                                    className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
-                                                    aria-label="Eliminar"
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </button>
+                                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    {!item.checked && editingItemId !== item.id && (
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setEditingItemId(item.id);
+                                                                setEditingText(item.text);
+                                                            }}
+                                                            className="p-1.5 text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-colors"
+                                                            aria-label="Editar"
+                                                        >
+                                                            <Pencil className="h-4 w-4" />
+                                                        </button>
+                                                    )}
+                                                    <button
+                                                        onClick={() => {
+                                                            if (confirm(`¿Seguro que quieres eliminar "${item.text}"?`)) {
+                                                                deleteChecklistItem(item.id, type);
+                                                            }
+                                                        }}
+                                                        className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                                                        aria-label="Eliminar"
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </button>
+                                                </div>
                                             </div>
                                         ))
                                     )}

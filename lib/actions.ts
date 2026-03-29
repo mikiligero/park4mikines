@@ -274,6 +274,21 @@ export async function toggleChecklistItem(id: number, checked: boolean, type: st
     revalidatePath(`/lists/${type.toLowerCase()}`);
 }
 
+export async function renameChecklistItem(id: number, text: string, type: string) {
+    const session = await getSession();
+    if (!session) redirect("/login");
+
+    const item = await prisma.checklistItem.findUnique({ where: { id } });
+    if (!item || item.userId !== session.userId) return;
+
+    await prisma.checklistItem.update({
+        where: { id },
+        data: { text },
+    });
+
+    revalidatePath(`/lists/${type.toLowerCase()}`);
+}
+
 export async function deleteChecklistItem(id: number, type: string) {
     const session = await getSession();
     if (!session) redirect("/login");
