@@ -27,12 +27,47 @@ interface ChecklistProps {
     categories: Category[];
 }
 
-export default function Checklist({ title, type, items, categories }: ChecklistProps) {
-    const [newItemText, setNewItemText] = useState("");
+function InlineAddForm({ type, categoryId }: { type: string, categoryId: number | null }) {
+    const [text, setText] = useState("");
     const [isAdding, setIsAdding] = useState(false);
+
+    const handleAdd = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!text.trim() || isAdding) return;
+        setIsAdding(true);
+        try {
+            await addChecklistItem(text, type, categoryId);
+            setText("");
+        } finally {
+            setIsAdding(false);
+        }
+    };
+
+    return (
+        <form onSubmit={handleAdd} className="mt-2 relative">
+            <input
+                type="text"
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                placeholder="Añadir elemento..."
+                disabled={isAdding}
+                className="w-full px-4 py-2.5 pr-10 text-sm rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-sm disabled:opacity-50"
+            />
+            <button
+                type="submit"
+                disabled={!text.trim() || isAdding}
+                className="absolute right-1.5 top-1.5 p-1 bg-indigo-100 text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-400 rounded-lg hover:bg-indigo-200 dark:hover:bg-indigo-800 disabled:opacity-50 transition-colors"
+                aria-label="Añadir elemento"
+            >
+                <Plus className="h-5 w-5" strokeWidth={2.5} />
+            </button>
+        </form>
+    );
+}
+
+export default function Checklist({ title, type, items, categories }: ChecklistProps) {
     const [isResetting, setIsResetting] = useState(false);
     const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>([]);
-    const [newItemCategoryId, setNewItemCategoryId] = useState<number | "">("");
     const [isLoaded, setIsLoaded] = useState(false);
 
     // Load from localStorage on mount
@@ -66,37 +101,8 @@ export default function Checklist({ title, type, items, categories }: ChecklistP
         ? items
         : items.filter((item) => item.categoryId && selectedCategoryIds.includes(item.categoryId));
 
-    // Sort: pending first, then by category name, then by item text
-    const sortedItems = visibleItems.slice().sort((a, b) => {
-        // 1. Checked items go to the bottom
-        if (a.checked !== b.checked) return a.checked ? 1 : -1;
-        // 2. Sort by category name (no category → empty string, sorts first)
-        const catA = a.categoryId ? (categories.find((c) => c.id === a.categoryId)?.name ?? "") : "";
-        const catB = b.categoryId ? (categories.find((c) => c.id === b.categoryId)?.name ?? "") : "";
-        if (catA !== catB) return catA.localeCompare(catB, "es");
-        // 3. Sort by item text
-        return a.text.localeCompare(b.text, "es");
-    });
-
     const checkedCount = visibleItems.filter((i) => i.checked).length;
     const totalCount = visibleItems.length;
-
-    const handleAdd = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!newItemText.trim() || isAdding) return;
-
-        setIsAdding(true);
-        try {
-            await addChecklistItem(
-                newItemText,
-                type,
-                newItemCategoryId !== "" ? newItemCategoryId : null
-            );
-            setNewItemText("");
-        } finally {
-            setIsAdding(false);
-        }
-    };
 
     const handleReset = async () => {
         if (isResetting || checkedCount === 0) return;
@@ -122,11 +128,23 @@ export default function Checklist({ title, type, items, categories }: ChecklistP
         }
     };
 
+    const visibleCategories = selectedCategoryIds.length > 0 
+        ? categories.filter(c => selectedCategoryIds.includes(c.id))
+        : categories;
+
+    // Show uncategorized section if no filters applied, or if there are actually uncategorized items showing
+    const showUncategorized = selectedCategoryIds.length === 0 || visibleItems.some(i => !i.categoryId);
+
+    const categoriesToRender = [
+        ...visibleCategories,
+        ...(showUncategorized ? [{ id: -1, name: "Sin categoría", type }] : [])
+    ];
+
     return (
-        <div className="max-w-2xl mx-auto p-4 space-y-6">
+        <div className="max-w-3xl mx-auto p-4 md:p-6 space-y-6">
             {/* Header */}
-            <div className="text-center space-y-2 mb-6 relative">
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">
+            <div className="text-center space-y-3 mb-8 relative">
+                <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">
                     {title}
                 </h1>
 
@@ -136,22 +154,22 @@ export default function Checklist({ title, type, items, categories }: ChecklistP
                     className="absolute right-0 top-0 p-2 text-gray-400 hover:text-indigo-600 disabled:opacity-30 disabled:hover:text-gray-400 transition-colors"
                     title="Reiniciar lista"
                 >
-                    <RotateCcw className={`h-5 w-5 ${isResetting ? "animate-spin" : ""}`} />
+                    <RotateCcw className={`h-6 w-6 ${isResetting ? "animate-spin" : ""}`} />
                 </button>
 
-                <p className="text-sm text-gray-500 dark:text-gray-400">
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
                     {checkedCount} / {totalCount} completados ({totalCount > 0 ? Math.round((checkedCount / totalCount) * 100) : 0}%)
                 </p>
                 {/* Progress Bar */}
-                <div className="h-2 w-full bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                <div className="h-2.5 w-full bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden shadow-inner">
                     <div
-                        className="h-full bg-gradient-to-r from-indigo-500 to-violet-500 transition-all duration-500"
+                        className="h-full bg-gradient-to-r from-indigo-500 to-violet-500 transition-all duration-700 ease-out"
                         style={{ width: `${totalCount > 0 ? (checkedCount / totalCount) * 100 : 0}%` }}
                     />
                 </div>
             </div>
 
-            {/* Category Bar */}
+            {/* Category Filter Bar */}
             <ChecklistCategoryBar
                 type={type}
                 categories={categories}
@@ -159,89 +177,84 @@ export default function Checklist({ title, type, items, categories }: ChecklistP
                 onToggle={handleToggleCategory}
             />
 
-            {/* Add Form */}
-            <form onSubmit={handleAdd} className="space-y-2">
-                <div className="relative">
-                    <input
-                        type="text"
-                        value={newItemText}
-                        onChange={(e) => setNewItemText(e.target.value)}
-                        placeholder="Añadir nuevo elemento..."
-                        className="w-full px-4 py-3 pr-12 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-sm"
-                    />
-                    <button
-                        type="submit"
-                        disabled={!newItemText.trim() || isAdding}
-                        className="absolute right-2 top-2 p-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:hover:bg-indigo-600 transition-colors"
-                    >
-                        <Plus className="h-5 w-5" />
-                    </button>
-                </div>
-                {/* Category selector for new item */}
-                {categories.length > 0 && (
-                    <select
-                        value={newItemCategoryId}
-                        onChange={(e) => setNewItemCategoryId(e.target.value === "" ? "" : Number(e.target.value))}
-                        className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-sm text-gray-600 dark:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
-                    >
-                        <option value="">Sin categoría</option>
-                        {categories.map((cat) => (
-                            <option key={cat.id} value={cat.id}>{cat.name}</option>
-                        ))}
-                    </select>
-                )}
-            </form>
-
-            {/* List */}
-            <div className="space-y-2">
-                {sortedItems.length === 0 ? (
+            {/* Grouped List Blocks */}
+            <div className="space-y-6">
+                {categoriesToRender.length === 0 && categories.length > 0 ? (
                     <div className="text-center py-12 text-gray-400 dark:text-gray-600 border-2 border-dashed border-gray-100 dark:border-gray-800 rounded-2xl">
-                        <p>
-                            {selectedCategoryIds.length > 0
-                                ? "No hay elementos en las categorías seleccionadas."
-                                : "Lista vacía. ¡Añade cosas para no olvidarlas!"}
-                        </p>
+                        <p>No has seleccionado ninguna categoría visible.</p>
                     </div>
                 ) : (
-                    sortedItems.map((item) => {
-                        const cat = item.categoryId
-                            ? categories.find((c) => c.id === item.categoryId)
-                            : null;
-                        return (
-                            <div
-                                key={item.id}
-                                className={`group flex items-center justify-between p-3 rounded-xl border transition-all duration-200 ${
-                                    item.checked
-                                        ? "bg-gray-50 dark:bg-gray-900/50 border-transparent text-gray-400 dark:text-gray-600"
-                                        : "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 shadow-sm hover:border-indigo-200 dark:hover:border-indigo-900"
-                                }`}
-                            >
-                                <button
-                                    onClick={() => toggleChecklistItem(item.id, !item.checked, type)}
-                                    className="flex items-center gap-3 flex-1 text-left"
-                                >
-                                    <div className={`transition-colors flex-shrink-0 ${item.checked ? "text-indigo-400" : "text-gray-300 dark:text-gray-600 group-hover:text-indigo-500"}`}>
-                                        {item.checked ? <CheckCircle className="h-5 w-5" /> : <Circle className="h-5 w-5" />}
-                                    </div>
-                                    <div className="min-w-0">
-                                        <span className={`font-medium transition-all ${item.checked ? "line-through decoration-indigo-200" : ""}`}>
-                                            {item.text}
-                                        </span>
-                                        {cat && (
-                                            <span className="block text-xs text-indigo-400 dark:text-indigo-500 mt-0.5">
-                                                {cat.name}
-                                            </span>
-                                        )}
-                                    </div>
-                                </button>
+                    categoriesToRender.map(cat => {
+                        const isUncategorized = cat.id === -1;
+                        const catItems = visibleItems.filter(i => isUncategorized ? !i.categoryId : i.categoryId === cat.id);
 
-                                <button
-                                    onClick={() => deleteChecklistItem(item.id, type)}
-                                    className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
-                                    aria-label="Eliminar"
-                                >
-                                    <Trash2 className="h-4 w-4" />
-                                </button>
+                        // If it's the uncategorized bucket and we are filtering but it's empty, skip it to save space
+                        if (isUncategorized && catItems.length === 0 && selectedCategoryIds.length > 0) return null;
+
+                        // Sort within category: pending first, then alphabetical
+                        const sortedCatItems = catItems.slice().sort((a, b) => {
+                            if (a.checked !== b.checked) return a.checked ? 1 : -1;
+                            return a.text.localeCompare(b.text, "es");
+                        });
+
+                        return (
+                            <div key={cat.id} className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-4 sm:p-5 shadow-sm hover:shadow-md transition-shadow">
+                                {/* Section Header */}
+                                <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-3 ml-1 flex items-center justify-between">
+                                    <span>{cat.name}</span>
+                                    <span className="text-xs font-semibold text-gray-500 bg-gray-100 dark:bg-gray-800 px-2.5 py-1 rounded-full">
+                                        {catItems.filter(i => i.checked).length} / {catItems.length}
+                                    </span>
+                                </h2>
+
+                                {/* Inline Add Form (Moved to top) */}
+                                <div className="mb-4">
+                                    <InlineAddForm type={type} categoryId={isUncategorized ? null : cat.id} />
+                                </div>
+
+                                {/* Items List */}
+                                <div className="space-y-2 mb-2">
+                                    {sortedCatItems.length === 0 ? (
+                                        <div className="py-2 flex items-center justify-center border border-dashed border-gray-200 dark:border-gray-800 rounded-xl bg-gray-50/50 dark:bg-gray-900/50">
+                                            <p className="text-sm text-gray-400 dark:text-gray-500 italic">Vacio</p>
+                                        </div>
+                                    ) : (
+                                        sortedCatItems.map(item => (
+                                            <div
+                                                key={item.id}
+                                                className={`group flex items-center justify-between p-3 rounded-xl border transition-all duration-200 ${
+                                                    item.checked
+                                                        ? "bg-gray-50 dark:bg-gray-900/40 border-transparent text-gray-400 dark:text-gray-600"
+                                                        : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-sm hover:border-indigo-200 dark:hover:border-indigo-900"
+                                                }`}
+                                            >
+                                                <button
+                                                    onClick={() => toggleChecklistItem(item.id, !item.checked, type)}
+                                                    className="flex items-center gap-3 flex-1 text-left"
+                                                >
+                                                    <div className={`transition-colors flex-shrink-0 ${item.checked ? "text-indigo-400" : "text-gray-300 dark:text-gray-500 group-hover:text-indigo-500"}`}>
+                                                        {item.checked ? <CheckCircle className="h-5 w-5" /> : <Circle className="h-5 w-5" />}
+                                                    </div>
+                                                    <span className={`font-medium transition-all ${item.checked ? "line-through decoration-indigo-200 opacity-60" : ""}`}>
+                                                        {item.text}
+                                                    </span>
+                                                </button>
+
+                                                <button
+                                                    onClick={() => {
+                                                        if (confirm(`¿Seguro que quieres eliminar "${item.text}"?`)) {
+                                                            deleteChecklistItem(item.id, type);
+                                                        }
+                                                    }}
+                                                    className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
+                                                    aria-label="Eliminar"
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </button>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
                             </div>
                         );
                     })
