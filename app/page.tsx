@@ -71,23 +71,23 @@ export default async function DashboardPage() {
                 </p>
             </header>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6 animate-in slide-in-from-bottom-8 duration-700 fade-in delay-150 fill-mode-both">
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 animate-in slide-in-from-bottom-8 duration-700 fade-in delay-150 fill-mode-both">
                 {allCards.map((card, idx) => (
                     <Link
                         key={idx}
                         href={card.href}
-                        className="group relative overflow-hidden rounded-3xl p-6 bg-white/70 dark:bg-gray-900/60 backdrop-blur-md border border-white/40 dark:border-gray-800/60 shadow-xl shadow-black/5 hover:shadow-2xl hover:-translate-y-1.5 transition-all duration-300 ease-out"
+                        className="group relative overflow-hidden rounded-2xl sm:rounded-3xl p-4 sm:p-6 bg-white/70 dark:bg-gray-900/60 backdrop-blur-md border border-white/40 dark:border-gray-800/60 shadow-md sm:shadow-xl shadow-black/5 hover:shadow-xl sm:hover:shadow-2xl hover:-translate-y-1 sm:hover:-translate-y-1.5 transition-all duration-300 ease-out flex flex-col"
                     >
-                        <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${card.color} opacity-10 dark:opacity-20 rounded-bl-[100px] -mr-8 -mt-8 transition-transform duration-500 ease-out group-hover:scale-125`} />
+                        <div className={`absolute top-0 right-0 w-24 h-24 sm:w-32 sm:h-32 bg-gradient-to-br ${card.color} opacity-10 dark:opacity-20 rounded-bl-full sm:rounded-bl-[100px] -mr-6 -mt-6 sm:-mr-8 sm:-mt-8 transition-transform duration-500 ease-out group-hover:scale-125`} />
                         
-                        <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${card.color} text-white flex items-center justify-center mb-6 shadow-lg ${card.shadow} transform transition-transform group-hover:scale-110 group-hover:rotate-3 duration-300`}>
-                            <card.icon className="w-7 h-7" strokeWidth={2} />
+                        <div className={`w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-gradient-to-br ${card.color} text-white flex items-center justify-center mb-3 sm:mb-6 shadow-md sm:shadow-lg ${card.shadow} transform transition-transform group-hover:scale-110 group-hover:rotate-3 duration-300`}>
+                            <card.icon className="w-5 h-5 sm:w-7 sm:h-7" strokeWidth={2} />
                         </div>
                         
-                        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                        <h2 className="text-sm sm:text-xl font-bold text-gray-900 dark:text-white mb-1 sm:mb-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors leading-tight">
                             {card.title}
                         </h2>
-                        <p className="text-gray-500 dark:text-gray-400 text-sm leading-relaxed">
+                        <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 leading-relaxed line-clamp-2 sm:line-clamp-none">
                             {card.description}
                         </p>
                     </Link>
