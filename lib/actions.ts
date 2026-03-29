@@ -78,8 +78,7 @@ export async function createSpot(formData: FormData) {
         },
     });
 
-    revalidatePath("/");
-    revalidatePath("/");
+    revalidatePath("/pois");
     // Navigation is handled by the client
 }
 
@@ -176,7 +175,7 @@ export async function updateSpot(id: number, formData: FormData) {
         }
     });
 
-    revalidatePath("/");
+    revalidatePath("/pois");
     return { success: true };
 }
 
@@ -214,13 +213,13 @@ export async function toggleFavorite(spotId: number) {
         await prisma.favorite.delete({
             where: { userId_spotId: { userId, spotId } }
         });
-        revalidatePath("/");
+        revalidatePath("/pois");
         return { success: true, favorited: false };
     } else {
         await prisma.favorite.create({
             data: { userId, spotId }
         });
-        revalidatePath("/");
+        revalidatePath("/pois");
         return { success: true, favorited: true };
     }
 }
@@ -352,7 +351,7 @@ export async function deleteSpot(id: number) {
         await prisma.spot.delete({
             where: { id }
         });
-        revalidatePath("/");
+        revalidatePath("/pois");
         return { success: true };
     } catch (error) {
         console.error("Error deleting spot:", error);

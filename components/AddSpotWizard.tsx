@@ -188,7 +188,7 @@ export default function AddSpotWizard({ spot, onCancel, initialPhoto, initialLat
                 }
 
                 if (onCancel) onCancel();
-                else router.push("/");
+                else router.push("/pois");
             } catch (error) {
                 console.error("Error saving spot:", error);
                 alert("Error al guardar el sitio");
@@ -613,7 +613,7 @@ export default function AddSpotWizard({ spot, onCancel, initialPhoto, initialLat
                     <ArrowLeft className="w-6 h-6" />
                 </button>
                 <h1 className="text-lg font-semibold text-gray-700">{spot ? "Editando sitio" : "Añadiendo un lugar"}</h1>
-                <button onClick={() => { if (onCancel) onCancel(); else router.push("/"); }} className="p-2 -mr-2 text-gray-600">
+                <button onClick={() => { if (onCancel) onCancel(); else router.push("/pois"); }} className="p-2 -mr-2 text-gray-600">
                     <X className="w-6 h-6" />
                 </button>
             </div>
@@ -640,7 +640,7 @@ export default function AddSpotWizard({ spot, onCancel, initialPhoto, initialLat
             {/* Footer Actions */}
             <div className="p-4 bg-white border-t border-gray-100 shrink-0 flex gap-4">
                 <button
-                    onClick={() => { if (onCancel) onCancel(); else router.push("/"); }}
+                    onClick={() => { if (onCancel) onCancel(); else router.push("/pois"); }}
                     className="flex-1 py-3 px-6 rounded-full bg-rose-400 text-white font-semibold shadow-md active:scale-95 transition-transform"
                 >
                     Salir

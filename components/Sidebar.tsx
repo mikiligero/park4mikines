@@ -34,7 +34,8 @@ export default function Sidebar() {
     });
 
     const menuItems = [
-        { name: "Puntos de Interés", href: "/", icon: MapIcon },
+        { name: "Inicio", href: "/", icon: LucideIcons.Home },
+        { name: "Puntos de Interés", href: "/pois", icon: LucideIcons.Map },
         ...dynamicLists,
         { name: "Pernoctas", href: "/pernoctas", icon: Moon },
         { name: "Configuración", href: "/settings", icon: Settings },
