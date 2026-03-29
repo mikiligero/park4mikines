@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Plus, Trash2, CheckCircle, Circle, RotateCcw } from "lucide-react";
-import { addChecklistItem, toggleChecklistItem, deleteChecklistItem, resetChecklistItems } from "@/lib/actions";
+import { addChecklistItem, toggleChecklistItem, deleteChecklistItem, resetChecklistItems, deleteChecklistCategory } from "@/lib/actions";
 import ChecklistCategoryBar from "@/components/ChecklistCategoryBar";
 
 type ItemType = string;
@@ -201,10 +201,25 @@ export default function Checklist({ title, type, items, categories }: ChecklistP
                             <div key={cat.id} className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-4 sm:p-5 shadow-sm hover:shadow-md transition-shadow">
                                 {/* Section Header */}
                                 <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100 mb-3 ml-1 flex items-center justify-between">
-                                    <span>{cat.name}</span>
-                                    <span className="text-xs font-semibold text-gray-500 bg-gray-100 dark:bg-gray-800 px-2.5 py-1 rounded-full">
-                                        {catItems.filter(i => i.checked).length} / {catItems.length}
-                                    </span>
+                                    <span className="flex-1">{cat.name}</span>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs font-semibold text-gray-500 bg-gray-100 dark:bg-gray-800 px-2.5 py-1 rounded-full">
+                                            {catItems.filter(i => i.checked).length} / {catItems.length}
+                                        </span>
+                                        {!isUncategorized && (
+                                            <button
+                                                onClick={() => {
+                                                    if (confirm(`¿Seguro que quieres eliminar la categoría "${cat.name}" y todas sus tareas?`)) {
+                                                        deleteChecklistCategory(cat.id, type);
+                                                    }
+                                                }}
+                                                className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                                                title="Eliminar categoría"
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </button>
+                                        )}
+                                    </div>
                                 </h2>
 
                                 {/* Inline Add Form (Moved to top) */}

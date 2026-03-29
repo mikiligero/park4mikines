@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { Plus, X, Tag } from "lucide-react";
-import { addChecklistCategory, deleteChecklistCategory } from "@/lib/actions";
+import { addChecklistCategory } from "@/lib/actions";
 
 type ItemType = string;
 
@@ -38,12 +38,6 @@ export default function ChecklistCategoryBar({
         });
     };
 
-    const handleDelete = (id: number) => {
-        startTransition(async () => {
-            await deleteChecklistCategory(id, type);
-        });
-    };
-
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === "Enter") handleAdd();
         if (e.key === "Escape") { setIsAdding(false); setNewName(""); }
@@ -63,7 +57,7 @@ export default function ChecklistCategoryBar({
                     return (
                         <div
                             key={cat.id}
-                            className={`group flex items-center gap-1 pl-3 pr-1.5 py-1 rounded-full text-sm font-medium transition-all duration-200 cursor-pointer select-none ${
+                            className={`group flex items-center justify-center px-5 py-2.5 rounded-full text-base font-medium transition-all shadow-sm cursor-pointer whitespace-nowrap ${
                                 isSelected
                                     ? "bg-indigo-600 text-white shadow-md shadow-indigo-200 dark:shadow-indigo-900/30"
                                     : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
@@ -71,22 +65,6 @@ export default function ChecklistCategoryBar({
                             onClick={() => onToggle(cat.id)}
                         >
                             <span>{cat.name}</span>
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (confirm(`¿Eliminar categoría "${cat.name}"?`)) {
-                                        handleDelete(cat.id);
-                                    }
-                                }}
-                                className={`ml-0.5 rounded-full p-0.5 transition-colors ${
-                                    isSelected
-                                        ? "text-indigo-200 hover:text-white hover:bg-indigo-500"
-                                        : "text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
-                                } opacity-0 group-hover:opacity-100`}
-                                title="Eliminar categoría"
-                            >
-                                <X className="h-3 w-3" />
-                            </button>
                         </div>
                     );
                 })}
