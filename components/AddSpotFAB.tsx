@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { Plus, Camera, MapPin, X } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { Icon } from "@/components/Icon";
 import { getGPSFromImage } from "@/lib/exif";
 import AddSpotWizard from "@/components/AddSpotWizard";
 
@@ -10,14 +10,10 @@ export default function AddSpotFAB({ isLoggedIn }: { isLoggedIn: boolean }) {
     const [isOpen, setIsOpen] = useState(false);
     const router = useRouter();
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const [addingFromPhoto, setAddingFromPhoto] = useState<{ file: File, lat?: number, lon?: number } | null>(null);
+    const [addingFromPhoto, setAddingFromPhoto] = useState<{ file: File; lat?: number; lon?: number } | null>(null);
 
-    const handleOptionClick = (type: "map" | "photo") => {
-        if (!isLoggedIn) {
-            router.push("/login");
-            return;
-        }
-
+    const handleOption = (type: "map" | "photo") => {
+        if (!isLoggedIn) { router.push("/login"); return; }
         if (type === "map") {
             router.push("/add");
         } else {
@@ -27,56 +23,95 @@ export default function AddSpotFAB({ isLoggedIn }: { isLoggedIn: boolean }) {
     };
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files.length > 0) {
+        if (e.target.files?.[0]) {
             const file = e.target.files[0];
             const coords = await getGPSFromImage(file);
-            setAddingFromPhoto({
-                file,
-                lat: coords?.lat,
-                lon: coords?.lon
-            });
+            setAddingFromPhoto({ file, lat: coords?.lat, lon: coords?.lon });
         }
         e.target.value = "";
     };
 
     return (
         <>
+            {/* Backdrop when speed-dial is open */}
             {isOpen && (
                 <div
-                    className="fixed inset-0 z-[1900] bg-black/20 backdrop-blur-sm"
+                    style={{
+                        position: "fixed", inset: 0, zIndex: 1900,
+                        background: "rgba(0,0,0,0.25)", backdropFilter: "blur(2px)",
+                    }}
                     onClick={() => setIsOpen(false)}
                 />
             )}
 
-            <div className="fixed bottom-6 right-6 z-[2000] flex flex-col items-end gap-3">
+            <div style={{
+                position: "fixed", bottom: 24, right: 24, zIndex: 2000,
+                display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 10,
+            }}>
+                {/* Speed-dial actions */}
                 {isOpen && (
-                    <div className="flex flex-col items-end gap-3 mb-2 animate-in slide-in-from-bottom-5 fade-in duration-200">
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8, marginBottom: 4 }}>
                         <button
-                            onClick={() => handleOptionClick("photo")}
-                            className="flex items-center gap-3 bg-white text-gray-800 px-4 py-3 rounded-full shadow-lg border border-gray-100 font-medium hover:bg-gray-50 active:scale-95 transition-all text-sm"
+                            onClick={() => handleOption("photo")}
+                            style={{
+                                display: "flex", alignItems: "center", gap: 10,
+                                background: "var(--surface)", color: "var(--text)",
+                                padding: "10px 16px 10px 12px", borderRadius: 99,
+                                border: "1px solid var(--border)", boxShadow: "var(--shadow-md)",
+                                cursor: "pointer", fontWeight: 700, fontSize: 14,
+                                fontFamily: "var(--font)", whiteSpace: "nowrap",
+                                animation: "fadeUp .15s ease",
+                            }}
                         >
-                            <span className="whitespace-nowrap">Añadir desde foto</span>
-                            <div className="bg-indigo-100 text-indigo-600 p-2 rounded-full">
-                                <Camera className="w-5 h-5" />
+                            <div style={{
+                                width: 32, height: 32, borderRadius: 99,
+                                background: "var(--primary-soft)", color: "var(--primary-soft-text)",
+                                display: "flex", alignItems: "center", justifyContent: "center",
+                            }}>
+                                <Icon name="camera" size={16} />
                             </div>
+                            Añadir desde foto
                         </button>
+
                         <button
-                            onClick={() => handleOptionClick("map")}
-                            className="flex items-center gap-3 bg-white text-gray-800 px-4 py-3 rounded-full shadow-lg border border-gray-100 font-medium hover:bg-gray-50 active:scale-95 transition-all text-sm"
+                            onClick={() => handleOption("map")}
+                            style={{
+                                display: "flex", alignItems: "center", gap: 10,
+                                background: "var(--surface)", color: "var(--text)",
+                                padding: "10px 16px 10px 12px", borderRadius: 99,
+                                border: "1px solid var(--border)", boxShadow: "var(--shadow-md)",
+                                cursor: "pointer", fontWeight: 700, fontSize: 14,
+                                fontFamily: "var(--font)", whiteSpace: "nowrap",
+                                animation: "fadeUp .2s ease",
+                            }}
                         >
-                            <span className="whitespace-nowrap">Añadir</span>
-                            <div className="bg-emerald-100 text-emerald-600 p-2 rounded-full">
-                                <MapPin className="w-5 h-5" />
+                            <div style={{
+                                width: 32, height: 32, borderRadius: 99,
+                                background: "var(--success-soft)", color: "var(--success)",
+                                display: "flex", alignItems: "center", justifyContent: "center",
+                            }}>
+                                <Icon name="pin" size={16} />
                             </div>
+                            Añadir lugar
                         </button>
                     </div>
                 )}
 
+                {/* FAB principal */}
                 <button
-                    onClick={() => setIsOpen(!isOpen)}
-                    className="flex h-14 w-14 items-center justify-center rounded-full bg-indigo-600 text-white shadow-xl transition-transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 z-[2001]"
+                    onClick={() => setIsOpen(v => !v)}
+                    style={{
+                        width: 56, height: 56, borderRadius: 99,
+                        background: "var(--primary)", color: "var(--on-primary)",
+                        border: "none", cursor: "pointer",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        boxShadow: "var(--shadow-lg)",
+                        transition: "transform .15s, background .15s",
+                        transform: isOpen ? "rotate(45deg)" : "rotate(0deg)",
+                    }}
+                    aria-label={isOpen ? "Cerrar" : "Añadir lugar"}
                 >
-                    {isOpen ? <X className="h-7 w-7" /> : <Plus className="h-8 w-8" />}
+                    <Icon name="plus" size={26} strokeWidth={2.5} />
                 </button>
             </div>
 
@@ -93,11 +128,11 @@ export default function AddSpotFAB({ isLoggedIn }: { isLoggedIn: boolean }) {
                     initialPhoto={addingFromPhoto.file}
                     initialLat={addingFromPhoto.lat}
                     initialLon={addingFromPhoto.lon}
-                    onCancel={() => {
-                        setAddingFromPhoto(null);
-                    }}
+                    onCancel={() => setAddingFromPhoto(null)}
                 />
             )}
+
+            <style>{`@keyframes fadeUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }`}</style>
         </>
     );
 }

@@ -1,58 +1,103 @@
 "use client";
 
 import { useTheme } from "next-themes";
-import { Sun, Moon, Monitor } from "lucide-react";
+import { Icon } from "@/components/Icon";
 import { useEffect, useState } from "react";
+import { type Palette, getPalette, setPalette } from "@/components/LayoutWrapper";
+
+const PALETTE_OPTIONS: { value: Palette; label: string; primary: string; dark: string }[] = [
+    { value: "bosque",    label: "Bosque",    primary: "#1F7A52", dark: "#16261D" },
+    { value: "atardecer", label: "Atardecer", primary: "#B85C38", dark: "#271510" },
+    { value: "indigo",    label: "Índigo",    primary: "#5048E5", dark: "#16163E" },
+];
+
+function PaletteSwatch({ primary, dark }: { primary: string; dark: string }) {
+    return (
+        <svg width="36" height="22" viewBox="0 0 36 22" fill="none">
+            <circle cx="11" cy="11" r="11" fill={primary} />
+            <circle cx="22" cy="11" r="11" fill={dark} />
+            <rect x="28" y="7" width="8" height="8" rx="4" fill="#ccc" />
+            <circle cx="30" cy="11" r="3" fill="white" />
+        </svg>
+    );
+}
 
 export default function AppearanceSettings() {
     const { theme, setTheme } = useTheme();
     const [mounted, setMounted] = useState(false);
+    const [palette, setPaletteState] = useState<Palette>("bosque");
 
     useEffect(() => {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         setMounted(true);
+        setPaletteState(getPalette());
     }, []);
 
     if (!mounted) return null;
 
+    const isDark = theme === "dark";
+
+    function handlePalette(p: Palette) {
+        setPaletteState(p);
+        setPalette(p);
+    }
+
     return (
-        <section className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Apariencia</h2>
-            <p className="text-gray-500 dark:text-gray-400 text-sm mb-6">Personaliza cómo se ve la aplicación en tu dispositivo.</p>
+        <section style={{ background: "var(--surface)", borderRadius: 20, padding: "20px 20px", border: "1px solid var(--border)" }}>
+            <h2 style={{ fontSize: 16, fontWeight: 800, letterSpacing: "-0.02em", color: "var(--text)", marginBottom: 4 }}>
+                Apariencia
+            </h2>
+            <p style={{ fontSize: 13, color: "var(--muted)", marginBottom: 16 }}>
+                Personaliza el aspecto de la app.
+            </p>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Toggle modo oscuro */}
+            <div style={{
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                padding: "14px 16px", borderRadius: 14, background: "var(--surface-2)",
+                marginBottom: 20,
+            }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <Icon name="moon" size={18} style={{ color: "var(--muted)" }} />
+                    <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>Modo oscuro</span>
+                </div>
                 <button
-                    onClick={() => setTheme("light")}
-                    className={`flex flex-col items-center justify-center p-6 rounded-xl border-2 transition-all ${theme === "light"
-                        ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20"
-                        : "border-gray-200 dark:border-gray-700 hover:border-emerald-200 dark:hover:border-gray-600"
-                        }`}
+                    className={`switch ${isDark ? "is-on" : ""}`}
+                    onClick={() => setTheme(isDark ? "light" : "dark")}
+                    aria-label="Modo oscuro"
                 >
-                    <Sun className={`w-8 h-8 mb-3 ${theme === "light" ? "text-emerald-600" : "text-gray-400"}`} />
-                    <span className={`font-medium ${theme === "light" ? "text-emerald-900 dark:text-emerald-400" : "text-gray-600 dark:text-gray-400"}`}>Claro</span>
+                    <span />
                 </button>
+            </div>
 
-                <button
-                    onClick={() => setTheme("dark")}
-                    className={`flex flex-col items-center justify-center p-6 rounded-xl border-2 transition-all ${theme === "dark"
-                        ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20"
-                        : "border-gray-200 dark:border-gray-700 hover:border-emerald-200 dark:hover:border-gray-600"
-                        }`}
-                >
-                    <Moon className={`w-8 h-8 mb-3 ${theme === "dark" ? "text-emerald-600" : "text-gray-400"}`} />
-                    <span className={`font-medium ${theme === "dark" ? "text-emerald-900 dark:text-emerald-400" : "text-gray-600 dark:text-gray-400"}`}>Oscuro</span>
-                </button>
-
-                <button
-                    onClick={() => setTheme("system")}
-                    className={`flex flex-col items-center justify-center p-6 rounded-xl border-2 transition-all ${theme === "system"
-                        ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20"
-                        : "border-gray-200 dark:border-gray-700 hover:border-emerald-200 dark:hover:border-gray-600"
-                        }`}
-                >
-                    <Monitor className={`w-8 h-8 mb-3 ${theme === "system" ? "text-emerald-600" : "text-gray-400"}`} />
-                    <span className={`font-medium ${theme === "system" ? "text-emerald-900 dark:text-emerald-400" : "text-gray-600 dark:text-gray-400"}`}>Automático</span>
-                </button>
+            {/* Color de la app */}
+            <p style={{ fontSize: 13, fontWeight: 700, color: "var(--text-2)", marginBottom: 10 }}>
+                Color de la app
+            </p>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
+                {PALETTE_OPTIONS.map(opt => {
+                    const active = palette === opt.value;
+                    return (
+                        <button
+                            key={opt.value}
+                            onClick={() => handlePalette(opt.value)}
+                            style={{
+                                display: "flex", flexDirection: "column", alignItems: "center",
+                                padding: "14px 8px 12px", borderRadius: 14, border: "2px solid",
+                                borderColor: active ? opt.primary : "var(--border)",
+                                background: "var(--surface-2)",
+                                cursor: "pointer", gap: 8, transition: "all .15s",
+                            }}
+                        >
+                            <PaletteSwatch primary={opt.primary} dark={opt.dark} />
+                            <span style={{
+                                fontSize: 13, fontWeight: 700,
+                                color: active ? "var(--text)" : "var(--text-2)",
+                            }}>
+                                {opt.label}
+                            </span>
+                        </button>
+                    );
+                })}
             </div>
         </section>
     );

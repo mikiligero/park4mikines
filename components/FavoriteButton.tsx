@@ -1,48 +1,77 @@
 "use client";
 
 import { useState } from "react";
-import { Heart, Loader2 } from "lucide-react";
+import { Icon } from "@/components/Icon";
 import { toggleFavorite } from "@/lib/actions";
 
-export default function FavoriteButton({ spotId, initialIsFavorite, className }: { spotId: number; initialIsFavorite: boolean; className?: string }) {
+interface FavoriteButtonProps {
+    spotId: number;
+    initialIsFavorite: boolean;
+    size?: number;
+    variant?: "card" | "plain";
+}
+
+export default function FavoriteButton({
+    spotId,
+    initialIsFavorite,
+    size = 16,
+    variant = "card",
+}: FavoriteButtonProps) {
     const [isFavorite, setIsFavorite] = useState(initialIsFavorite);
-    // ...
-    // Note: I will need to use className in the button rendering
     const [loading, setLoading] = useState(false);
 
     const handleToggle = async (e: React.MouseEvent) => {
-        // ... (existing logic)
         e.preventDefault();
         e.stopPropagation();
         if (loading) return;
 
         setLoading(true);
-        const previousState = isFavorite;
+        const previous = isFavorite;
         setIsFavorite(!isFavorite);
 
         try {
             const result = await toggleFavorite(spotId);
-            if (result && 'success' in result && result.success) {
+            if (result && "success" in result && result.success) {
                 setIsFavorite(!!result.favorited);
             } else {
-                setIsFavorite(previousState);
+                setIsFavorite(previous);
             }
-        } catch (error) {
-            setIsFavorite(previousState);
+        } catch {
+            setIsFavorite(previous);
         } finally {
             setLoading(false);
         }
     };
 
+    if (variant === "plain") {
+        return (
+            <button
+                onClick={handleToggle}
+                style={{
+                    background: "none", border: "none", cursor: "pointer", padding: 0,
+                    color: isFavorite ? "var(--danger)" : "var(--text-2)",
+                    opacity: loading ? 0.6 : 1,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                }}
+                aria-label={isFavorite ? "Quitar de favoritos" : "Añadir a favoritos"}
+            >
+                <Icon name="heart" size={size} filled={isFavorite} />
+            </button>
+        );
+    }
+
     return (
         <button
             onClick={handleToggle}
-            className={`p-2 rounded-full transition-colors ${isFavorite
-                ? "bg-red-50 text-red-500 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/30"
-                : "bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-gray-600 dark:bg-gray-800 dark:text-gray-500"
-                } ${className || ""}`}
+            className="iconbtn iconbtn-surface"
+            style={{
+                width: 36, height: 36,
+                color: isFavorite ? "var(--danger)" : "var(--muted)",
+                opacity: loading ? 0.6 : 1,
+            }}
+            aria-label={isFavorite ? "Quitar de favoritos" : "Añadir a favoritos"}
         >
-            {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Heart className={`h-5 w-5 ${isFavorite ? "fill-current" : ""}`} />}
+            <Icon name="heart" size={size} filled={isFavorite} />
         </button>
     );
 }

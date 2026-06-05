@@ -2,48 +2,40 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import SettingsClient from "@/components/settings/SettingsClient";
-import { ArrowLeft } from "lucide-react";
+import { Icon } from "@/components/Icon";
 import Link from "next/link";
 
 export default async function SettingsPage() {
     const session = await getSession();
-    if (!session || !session.userId) {
-        redirect("/login");
-    }
+    if (!session || !session.userId) redirect("/login");
 
-    const user = await prisma.user.findUnique({
-        where: { id: session.userId as number }
-    });
-
+    const user = await prisma.user.findUnique({ where: { id: session.userId as number } });
     if (!user) redirect("/login");
 
-    const lists = await prisma.configurableList.findMany({
-        orderBy: { createdAt: "asc" }
-    });
+    const lists = await prisma.configurableList.findMany({ orderBy: { createdAt: "asc" } });
 
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-20 md:pl-64">
-            {/* Mobile Header */}
-            <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4 sticky top-0 z-30 flex items-center gap-3 md:hidden">
-                <Link href="/" className="p-2 -ml-2 text-gray-600 dark:text-gray-300">
-                    <ArrowLeft className="w-6 h-6" />
+        <div style={{ minHeight: "100vh", background: "var(--bg)", paddingBottom: 80 }}>
+            {/* Header (visible en todas las pantallas) */}
+            <div style={{
+                position: "sticky", top: 0, zIndex: 50,
+                background: "var(--surface)", borderBottom: "1px solid var(--border)",
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                padding: "0 16px", height: 52,
+            }}>
+                <Link href="/" style={{ textDecoration: "none" }}>
+                    <button className="iconbtn iconbtn-ghost" style={{ width: 36, height: 36 }}>
+                        <Icon name="back" size={20} />
+                    </button>
                 </Link>
-                <h1 className="text-xl font-bold text-gray-800 dark:text-white">Configuración</h1>
-            </header>
+                <span style={{ fontWeight: 800, fontSize: 17, letterSpacing: "-0.02em", color: "var(--text)" }}>
+                    Configuración
+                </span>
+                <div style={{ width: 36 }} />
+            </div>
 
-            <main className="max-w-4xl mx-auto p-4 md:p-8 space-y-8">
-                <div className="hidden md:block mb-8">
-                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Configuración</h1>
-                    <p className="text-gray-500 dark:text-gray-400 mt-1">Gestiona tu perfil y preferencias de la aplicación.</p>
-                </div>
-
-
-
-                <SettingsClient
-                    user={user}
-                    isAdmin={session.role === "ADMIN"}
-                    lists={lists}
-                />
+            <main style={{ maxWidth: 680, margin: "0 auto", padding: "20px 16px 0" }}>
+                <SettingsClient user={user} isAdmin={session.role === "ADMIN"} lists={lists} />
             </main>
         </div>
     );

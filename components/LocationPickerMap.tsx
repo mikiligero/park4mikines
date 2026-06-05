@@ -1,47 +1,57 @@
 "use client";
 
 import { useEffect } from "react";
-import { MapContainer, TileLayer, useMapEvents } from "react-leaflet";
+import { useTheme } from "next-themes";
+import { MapContainer, TileLayer, useMapEvents, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 
-function MapEvents({ onPositionChange }: { onPositionChange: (pos: { lat: number; lng: number }) => void }) {
+function MoveListener({ onMove }: { onMove: (lat: number, lng: number) => void }) {
     const map = useMapEvents({
         moveend: () => {
-            const center = map.getCenter();
-            onPositionChange({ lat: center.lat, lng: center.lng });
+            const c = map.getCenter();
+            onMove(c.lat, c.lng);
         },
     });
-
-    // Removed auto-locate useEffect because parent handles initial position now
-
     return null;
 }
 
-// Helper to update map center when position prop changes
-function MapUpdater({ position }: { position: number[] }) {
-    const map = useMapEvents({});
-
+function FlyTo({ position }: { position: [number, number] }) {
+    const map = useMap();
     useEffect(() => {
-        if (position) {
-            map.flyTo([position[0], position[1]], map.getZoom(), {
-                animate: true,
-                duration: 1.5 // Smooth animation
-            });
-        }
-    }, [position, map]);
-
+        map.flyTo(position, map.getZoom(), { animate: true, duration: 0.8 });
+    }, [position, map]); // eslint-disable-line
     return null;
 }
 
-export default function LocationPickerMap({ initialPosition, onPositionChange }: { initialPosition: number[], onPositionChange: (pos: { lat: number; lng: number }) => void }) {
+interface Props {
+    lat: number;
+    lng: number;
+    onMove?: (lat: number, lng: number) => void;
+    flyTo?: [number, number];
+    zoom?: number;
+    interactive?: boolean;
+}
+
+export default function LocationPickerMap({ lat, lng, onMove, flyTo, zoom = 15, interactive = true }: Props) {
+    const { resolvedTheme } = useTheme();
+    const tileUrl = resolvedTheme === "dark"
+        ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+        : "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
+
     return (
-        <MapContainer center={[initialPosition[0], initialPosition[1]]} zoom={15} className="h-full w-full">
-            <TileLayer
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            />
-            <MapEvents onPositionChange={onPositionChange} />
-            <MapUpdater position={initialPosition} />
+        <MapContainer
+            center={[lat, lng]}
+            zoom={zoom}
+            className="h-full w-full"
+            zoomControl={false}
+            dragging={interactive}
+            scrollWheelZoom={interactive}
+            doubleClickZoom={interactive}
+            touchZoom={interactive}
+        >
+            <TileLayer key={resolvedTheme} url={tileUrl} attribution="&copy; CARTO" />
+            {onMove && <MoveListener onMove={onMove} />}
+            {flyTo && <FlyTo position={flyTo} />}
         </MapContainer>
     );
 }

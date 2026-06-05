@@ -1,748 +1,913 @@
 "use client";
 
-import { useState, useRef, useMemo, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
-import { ArrowLeft, X, MapPin, Search, Crosshair, Star, Trash2, Camera, Crop } from "lucide-react";
 import { createPortal } from "react-dom";
 import Cropper from "react-easy-crop";
 import getCroppedImg from "@/lib/cropImage";
 import { createSpot, updateSpot } from "@/lib/actions";
+import { getGPSFromImage } from "@/lib/exif";
+import { Icon, type IconName } from "@/components/Icon";
+import { PLACE_TYPES } from "@/lib/placeTypes";
 
-// Lazy load Map for Step 1
 const LocationPickerMap = dynamic(() => import("./LocationPickerMap"), {
-    loading: () => <div className="h-full w-full bg-gray-100 animate-pulse flex items-center justify-center">Cargando mapa...</div>,
-    ssr: false
+    ssr: false,
+    loading: () => (
+        <div style={{
+            height: "100%", display: "flex", alignItems: "center", justifyContent: "center",
+            background: "var(--surface-2)", color: "var(--muted)", fontSize: 14,
+        }}>
+            Cargando mapa…
+        </div>
+    ),
 });
 
-export default function AddSpotWizard({ spot, onCancel, initialPhoto, initialLat, initialLon }: { spot?: any; onCancel?: () => void; initialPhoto?: File; initialLat?: number; initialLon?: number }) {
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function parseLatLng(raw: string): { lat: number; lng: number } | null {
+    // DMS: 37°39'30.5"N 3°43'04.2"W
+    const dmsRx = /(\d+)[°º]\s*(\d+)[`'′]\s*(\d+(?:[.,]\d+)?)[″""]\s*([NS])\s+(\d+)[°º]\s*(\d+)[`'′]\s*(\d+(?:[.,]\d+)?)[″""]\s*([EW])/i;
+    const d = dmsRx.exec(raw.trim());
+    if (d) {
+        const cvt = (deg: string, min: string, sec: string, dir: string) => {
+            const v = +deg + +min / 60 + parseFloat(sec.replace(",", ".")) / 3600;
+            return /[SW]/i.test(dir) ? -v : v;
+        };
+        return { lat: cvt(d[1], d[2], d[3], d[4]), lng: cvt(d[5], d[6], d[7], d[8]) };
+    }
+    // Decimal: "37.123, -3.456" or "37.123 -3.456"
+    const parts = raw.trim().replace(/,/g, " ").split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) {
+        const lat = parseFloat(parts[0]);
+        const lng = parseFloat(parts[1]);
+        if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180)
+            return { lat, lng };
+    }
+    return null;
+}
+
+// ── Services list (labels must match DB) ─────────────────────────────────────
+
+const SERVICES_LIST: { label: string; icon: IconName }[] = [
+    { label: "Agua potable",               icon: "faucet" },
+    { label: "Aguas negras",               icon: "toilet" },
+    { label: "Aguas grises",               icon: "greywater" },
+    { label: "Cubo de basura",             icon: "trash" },
+    { label: "Baños públicos",             icon: "restroom" },
+    { label: "Duchas (acceso posible)",    icon: "shower" },
+    { label: "Electricidad (acceso posible)", icon: "plug" },
+    { label: "WIFI",                       icon: "wifi" },
+    { label: "Cobertura 5G",              icon: "signal" },
+    { label: "Piscina",                    icon: "pool" },
+    { label: "Lavandería",                 icon: "laundry" },
+    { label: "Lavado de autocaravanas",    icon: "camperwash" },
+    { label: "Se permiten mascotas",       icon: "pet" },
+    { label: "Panadería",                  icon: "bread" },
+];
+
+const TYPE_LIST = Object.values(PLACE_TYPES);
+
+// ── Component ─────────────────────────────────────────────────────────────────
+
+interface Props {
+    spot?: any;
+    onCancel?: () => void;
+    initialPhoto?: File;
+    initialLat?: number;
+    initialLon?: number;
+}
+
+export default function AddSpotWizard({ spot, onCancel, initialPhoto, initialLat, initialLon }: Props) {
     const router = useRouter();
-    const [step, setStep] = useState(1);
-    const [loadingLocation, setLoadingLocation] = useState(true);
     const [mounted, setMounted] = useState(false);
+    const [step, setStep] = useState(1);
+    const TOTAL_STEPS = 4;
+
+    // Location mode (step 1)
+    const [locMode, setLocMode] = useState<"map" | "coords" | "photo">("map");
+    const [mapFlyTo, setMapFlyTo] = useState<[number, number] | undefined>(undefined);
+
+    // Map search (step 1)
+    const [mapSearch, setMapSearch] = useState("");
+    const [mapSearchResults, setMapSearchResults] = useState<any[]>([]);
+    const [mapSearching, setMapSearching] = useState(false);
+    const mapSearchRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const handleMapSearchChange = (val: string) => {
+        setMapSearch(val);
+        if (mapSearchRef.current) clearTimeout(mapSearchRef.current);
+        if (!val.trim() || val.trim().length < 2) { setMapSearchResults([]); return; }
+        mapSearchRef.current = setTimeout(async () => {
+            setMapSearching(true);
+            try {
+                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(val)}&limit=5`);
+                setMapSearchResults(await res.json());
+            } catch { /* ignore */ }
+            finally { setMapSearching(false); }
+        }, 400);
+    };
+
+    const handleMapSearchSelect = (r: any) => {
+        const lat = parseFloat(r.lat);
+        const lng = parseFloat(r.lon);
+        setFormData(p => ({ ...p, latitude: lat, longitude: lng }));
+        setMapFlyTo([lat, lng]);
+        setMapSearch(r.display_name.split(",")[0]);
+        setMapSearchResults([]);
+    };
+    const [coordInput, setCoordInput] = useState("");
+    const [coordValid, setCoordValid] = useState<boolean | null>(null);
+    const [exifStatus, setExifStatus] = useState<"idle" | "found" | "notfound">("idle");
+    const [exifFile, setExifFile] = useState<File | null>(null);
+    const exifInputRef = useRef<HTMLInputElement>(null);
+
+    const handleLocModeChange = (mode: "map" | "coords" | "photo") => {
+        setLocMode(mode);
+        if (mode !== "photo") { setExifFile(null); setExifStatus("idle"); }
+    };
+
+    // Form data
     const [formData, setFormData] = useState({
-        latitude: spot?.latitude ?? initialLat ?? 40.416775,
+        latitude:  spot?.latitude  ?? initialLat ?? 40.416775,
         longitude: spot?.longitude ?? initialLon ?? -3.70379,
-        category: spot?.category ?? "NATURE",
-        title: spot?.title ?? "",
+        category:  spot?.category  ?? "NATURE",
+        title:     spot?.title     ?? "",
         description: spot?.description ?? "",
-        services: (spot?.services?.map((s: any) => s.service.name) as string[]) ?? [] as string[],
-        images: (spot?.images?.map((img: any) => img.url) as (File | string)[]) ?? (initialPhoto ? [initialPhoto] : []) as (File | string)[],
-        rating: spot?.rating ?? 0,
-        isFree: spot?.isFree ?? true,
-        places: spot?.places ?? 1,
+        services:  (spot?.services?.map((s: any) => s.service.name) as string[]) ?? [],
+        images:    (spot?.images?.map((img: any) => img.url) as (File | string)[]) ??
+                   (initialPhoto ? [initialPhoto] : []) as (File | string)[],
+        rating:    spot?.rating ?? 0,
+        isFree:    spot?.isFree ?? true,
+        places:    spot?.places ?? 1,
     });
 
-    // Cropping State
-    const [croppingImageIndex, setCroppingImageIndex] = useState<number | null>(null);
-    const [imageSrc, setImageSrc] = useState<string | null>(null);
-    const [crop, setCrop] = useState({ x: 0, y: 0 });
-    const [zoom, setZoom] = useState(1);
-    const [aspectRatio, setAspectRatio] = useState(4 / 3);
-    const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
-    const fileInputRef = useRef<HTMLInputElement>(null);
+    // Cropper state
+    const [croppingIdx, setCroppingIdx]   = useState<number | null>(null);
+    const [imageSrc, setImageSrc]         = useState<string | null>(null);
+    const [crop, setCrop]                 = useState({ x: 0, y: 0 });
+    const [zoom, setZoom]                 = useState(1);
+    const [aspect, setAspect]             = useState(4 / 3);
+    const [croppedPixels, setCroppedPixels] = useState<any>(null);
+    const fileInputRef   = useRef<HTMLInputElement>(null);
     const cameraInputRef = useRef<HTMLInputElement>(null);
-    const [showManualCoords, setShowManualCoords] = useState(false);
+
     const [isProcessing, setIsProcessing] = useState(false);
 
-    const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files.length > 0) {
-            if (formData.images.length >= 5) {
-                alert("Máximo 5 fotos permitidas.");
-                return;
-            }
-            const file = e.target.files[0];
-            const objectUrl = URL.createObjectURL(file);
-            setImageSrc(objectUrl);
-            setCroppingImageIndex(formData.images.length); // New image at the end
+    // Geolocation on mount
+    useEffect(() => {
+        setMounted(true);
+        if (spot || initialLat !== undefined) return;
+        navigator.geolocation?.getCurrentPosition(
+            ({ coords }) => setFormData(p => ({ ...p, latitude: coords.latitude, longitude: coords.longitude })),
+            () => {},
+            { timeout: 5000 }
+        );
+    }, []); // eslint-disable-line
+
+    const close = () => { if (onCancel) onCancel(); else router.push("/pois"); };
+
+    // ── Coordinate input live validation ──────────────────────────────────────
+
+    useEffect(() => {
+        if (!coordInput.trim()) { setCoordValid(null); return; }
+        const result = parseLatLng(coordInput);
+        if (result) {
+            setCoordValid(true);
+            setFormData(p => ({ ...p, latitude: result.lat, longitude: result.lng }));
+        } else {
+            setCoordValid(false);
         }
+    }, [coordInput]);
+
+    // ── EXIF photo picker ──────────────────────────────────────────────────────
+
+    const handleExifPick = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const gps = await getGPSFromImage(file);
+        if (gps) {
+            setExifStatus("found");
+            setExifFile(file);
+            setFormData(p => ({ ...p, latitude: gps.lat, longitude: gps.lon }));
+        } else {
+            setExifStatus("notfound");
+            setExifFile(null);
+        }
+        e.target.value = "";
     };
 
-    const handleCropComplete = (croppedArea: any, croppedAreaPixels: any) => {
-        setCroppedAreaPixels(croppedAreaPixels);
+    // ── Image crop helpers ────────────────────────────────────────────────────
+
+    const onPhotoFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!e.target.files?.[0]) return;
+        if (formData.images.length >= 5) { alert("Máximo 5 fotos."); return; }
+        setImageSrc(URL.createObjectURL(e.target.files[0]));
+        setCroppingIdx(formData.images.length);
     };
 
-    const saveCroppedImage = async () => {
-        if (!imageSrc || !croppedAreaPixels) return;
+    const saveCrop = async () => {
+        if (!imageSrc || !croppedPixels) return;
         setIsProcessing(true);
-        // Small timeout to allow the spinner to render before blocking CPU
-        await new Promise(resolve => setTimeout(resolve, 100));
-
+        await new Promise(r => setTimeout(r, 100));
         try {
-            const croppedImageBlob = await getCroppedImg(imageSrc, croppedAreaPixels);
-            if (croppedImageBlob) {
-                const file = new File([croppedImageBlob], `photo-${Date.now()}.webp`, { type: "image/webp" });
-
-                if (croppingImageIndex !== null && croppingImageIndex < formData.images.length) {
-                    // Editing existing
-                    const newImages = [...formData.images];
-                    newImages[croppingImageIndex] = file;
-                    setFormData(prev => ({ ...prev, images: newImages }));
-                } else {
-                    // Adding new
-                    setFormData(prev => ({ ...prev, images: [...prev.images, file] }));
-                }
-
+            const blob = await getCroppedImg(imageSrc, croppedPixels);
+            if (blob) {
+                const file = new File([blob], `photo-${Date.now()}.webp`, { type: "image/webp" });
+                setFormData(p => {
+                    const imgs = [...p.images];
+                    if (croppingIdx !== null && croppingIdx < imgs.length) imgs[croppingIdx] = file;
+                    else imgs.push(file);
+                    return { ...p, images: imgs };
+                });
                 cancelCrop();
             }
-        } catch (e) {
-            console.error(e);
+        } catch { /* ignore */ }
+        finally { setIsProcessing(false); }
+    };
+
+    const cancelCrop = () => {
+        setImageSrc(null); setCroppingIdx(null);
+        setCrop({ x: 0, y: 0 }); setZoom(1); setAspect(4 / 3);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+    };
+
+    // ── Submit ────────────────────────────────────────────────────────────────
+
+    const submit = async (quick = false) => {
+        setIsProcessing(true);
+        try {
+            const data = new FormData();
+            data.append("title",       quick ? "Nuevo sitio" : (formData.title || "Nuevo sitio"));
+            data.append("description", quick ? "" : formData.description);
+            data.append("category",    formData.category);
+            data.append("latitude",    formData.latitude.toString());
+            data.append("longitude",   formData.longitude.toString());
+            data.append("rating",      (quick ? 0 : formData.rating).toString());
+            data.append("isFree",      (quick ? true : formData.isFree).toString());
+            data.append("places",      (quick ? 1 : formData.places).toString());
+            if (!quick) {
+                formData.services.forEach(s => data.append("services", s));
+                formData.images.forEach(img => {
+                    if (typeof img === "string") data.append("existingImages", img);
+                    else data.append("images", img);
+                });
+            }
+            // Add EXIF photo if picked
+            if (exifFile && !quick) data.append("images", exifFile);
+
+            if (spot) await updateSpot(spot.id, data);
+            else await createSpot(data);
+            close();
+        } catch {
+            alert("Error al guardar el lugar.");
         } finally {
             setIsProcessing(false);
         }
     };
 
-    const cancelCrop = () => {
-        setImageSrc(null);
-        setCroppingImageIndex(null);
-        setCrop({ x: 0, y: 0 });
-        setZoom(1);
-        setAspectRatio(4 / 3);
-        if (fileInputRef.current) fileInputRef.current.value = "";
-    };
+    if (!mounted) return null;
 
-    const deleteImage = (index: number) => {
-        setFormData(prev => ({
-            ...prev,
-            images: prev.images.filter((_, i) => i !== index)
-        }));
-    };
+    const isEditing = !!spot;
 
-    const editImage = (index: number) => {
-        const img = formData.images[index];
-        if (typeof img === 'string') {
-            setImageSrc(img);
-            setCroppingImageIndex(index);
-        } else {
-            const objectUrl = URL.createObjectURL(img);
-            setImageSrc(objectUrl);
-            setCroppingImageIndex(index);
-        }
-    };
+    // ── Render helpers ────────────────────────────────────────────────────────
 
-    useEffect(() => {
-        setMounted(true);
-        if (spot || (initialLat !== undefined && initialLon !== undefined)) {
-            setLoadingLocation(false);
-            return;
-        }
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    setFormData(prev => ({
-                        ...prev,
-                        latitude: position.coords.latitude,
-                        longitude: position.coords.longitude
-                    }));
-                    setLoadingLocation(false);
-                },
-                (error) => {
-                    console.error("Error getting location", error);
-                    setLoadingLocation(false); // Fallback to default
-                },
-                { timeout: 5000 }
-            );
-        } else {
-            setLoadingLocation(false);
-        }
-    }, []);
+    const coordLabel = `${formData.latitude.toFixed(5)}, ${formData.longitude.toFixed(5)}`;
 
-    const isLastStep = step === 5; // 1: Loc, 2: Type, 3: Desc, 4: Photos, 5: Services
+    const renderStep1 = () => (
+        <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
 
-    const handleBack = () => {
-        if (step > 1) setStep(step - 1);
-        else if (onCancel) onCancel();
-        else router.back();
-    };
-
-    const handleNext = async () => {
-        if (isLastStep) {
-            // Submit
-            setIsProcessing(true);
-            try {
-                const data = new FormData();
-                data.append("title", formData.title || "Nuevo sitio");
-                data.append("description", formData.description);
-                data.append("category", formData.category);
-                data.append("latitude", formData.latitude.toString());
-                data.append("longitude", formData.longitude.toString());
-                data.append("longitude", formData.longitude.toString());
-                data.append("rating", formData.rating.toString());
-                data.append("isFree", formData.isFree.toString());
-                data.append("places", formData.places.toString());
-                formData.services.forEach(s => data.append("services", s));
-
-                // Keep track of existing images and new ones
-                formData.images.forEach(img => {
-                    if (typeof img === 'string') {
-                        data.append("existingImages", img);
-                    } else {
-                        data.append("images", img);
-                    }
-                });
-
-                if (spot) {
-                    await updateSpot(spot.id, data);
-                } else {
-                    await createSpot(data);
-                }
-
-                if (onCancel) onCancel();
-                else router.push("/pois");
-            } catch (error) {
-                console.error("Error saving spot:", error);
-                alert("Error al guardar el sitio");
-            } finally {
-                setIsProcessing(false);
-            }
-        } else {
-            setStep(step + 1);
-        }
-    };
-
-    // --- Render Steps ---
-
-    const renderStep1_Location = () => (
-        <div className="relative h-full w-full flex flex-col">
-            <div className="absolute top-16 left-0 right-0 px-4 z-[1000] text-center">
-                <h2 className="text-xl font-bold text-gray-800 bg-white/90 backdrop-blur px-4 py-2 rounded-full inline-block shadow-sm">
-                    ¿Dónde está este lugar?
-                </h2>
-            </div>
-
-            <div className="flex-1 relative">
-                <LocationPickerMap
-                    initialPosition={[formData.latitude, formData.longitude]}
-                    onPositionChange={(pos) => setFormData(prev => ({ ...prev, latitude: pos.lat, longitude: pos.lng }))}
-                />
-
-                {/* Center Marker Overlay */}
-                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[900] pointer-events-none">
-                    <MapPin className="w-10 h-10 text-emerald-500 mb-5 drop-shadow-lg" fill="currentColor" />
-                </div>
-            </div>
-
-            <div className="flex gap-4 mb-4">
-                <button
-                    onClick={() => {
-                        setLoadingLocation(true);
-                        if (navigator.geolocation) {
-                            navigator.geolocation.getCurrentPosition(
-                                (position) => {
-                                    setFormData(prev => ({
-                                        ...prev,
-                                        latitude: position.coords.latitude,
-                                        longitude: position.coords.longitude
-                                    }));
-                                    setLoadingLocation(false);
-                                },
-                                (error) => {
-                                    console.error("Error getting location", error);
-                                    setLoadingLocation(false);
-                                    alert("No se pudo obtener la ubicación");
-                                },
-                                { timeout: 5000, enableHighAccuracy: true }
-                            );
-                        } else {
-                            setLoadingLocation(false);
-                            alert("Geolocalización no soportada");
-                        }
-                    }}
-                    className="flex-1 flex items-center justify-center gap-2 bg-white border border-gray-300 rounded-lg py-3 text-sm font-medium text-blue-600 shadow-sm transition-colors hover:bg-gray-50"
-                >
-                    <Crosshair className="w-4 h-4" /> Mi posición
-                </button>
-                <button
-                    onClick={() => setShowManualCoords(true)}
-                    className="flex-1 flex items-center justify-center gap-2 bg-white border border-gray-300 rounded-lg py-3 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50"
-                >
-                    <MapPin className="w-4 h-4" /> Coordenadas
-                </button>
-            </div>
-
-            {/* Coordinate Modal */}
-            {showManualCoords && (
-                <div className="fixed inset-0 z-[11000] bg-black/50 flex items-center justify-center p-4">
-                    <div className="bg-white w-full max-w-sm rounded-2xl p-6 shadow-xl animate-in zoom-in-95 duration-200">
-                        <h3 className="text-lg font-bold text-gray-900 mb-4">Introduce coordenadas</h3>
-
-                        <CoordinatesInput
-
-                            onChange={(lat, lon) => {
-                                setFormData(prev => ({ ...prev, latitude: lat, longitude: lon }));
-                                setShowManualCoords(false);
+            {/* Location mode tabs */}
+            <div style={{ display: "flex", gap: 4, padding: "12px 16px 0", flexShrink: 0 }}>
+                {(["map", "coords", "photo"] as const).map((mode) => {
+                    const labels = { map: "Mapa", coords: "Coordenadas", photo: "Foto" };
+                    const icons: Record<string, IconName> = { map: "map", coords: "sliders", photo: "camera" };
+                    const active = locMode === mode;
+                    return (
+                        <button
+                            key={mode}
+                            onClick={() => handleLocModeChange(mode)}
+                            style={{
+                                flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
+                                gap: 5, padding: "8px 4px", borderRadius: 10, fontWeight: 700,
+                                fontSize: 13, border: "none", cursor: "pointer",
+                                background: active ? "var(--primary-soft)" : "var(--surface-2)",
+                                color: active ? "var(--primary-soft-text)" : "var(--muted)",
+                                transition: "background .15s, color .15s",
                             }}
-                            onCancel={() => setShowManualCoords(false)}
+                        >
+                            <Icon name={icons[mode]} size={14} />
+                            {labels[mode]}
+                        </button>
+                    );
+                })}
+            </div>
+
+            {/* Location content */}
+            <div style={{ flex: 1, position: "relative", overflow: "hidden", margin: "12px 0 0" }}>
+
+                {/* ── MAP mode ── */}
+                {locMode === "map" && (
+                    <div style={{ height: "100%", position: "relative" }}>
+                        <LocationPickerMap
+                            lat={formData.latitude}
+                            lng={formData.longitude}
+                            onMove={(lat, lng) => setFormData(p => ({ ...p, latitude: lat, longitude: lng }))}
+                            flyTo={mapFlyTo}
                         />
+
+                        {/* Search overlay */}
+                        <div style={{
+                            position: "absolute", top: 10, left: 12, right: 12, zIndex: 1000,
+                        }}>
+                            <div style={{
+                                display: "flex", alignItems: "center", gap: 8,
+                                background: "var(--surface)", borderRadius: 12,
+                                padding: "8px 12px", boxShadow: "0 2px 12px rgba(0,0,0,0.15)",
+                                border: "1px solid var(--border)",
+                            }}>
+                                <Icon name="search" size={15} style={{ color: "var(--faint)", flexShrink: 0 }} />
+                                <input
+                                    type="text"
+                                    placeholder="Buscar ciudad o lugar…"
+                                    value={mapSearch}
+                                    onChange={e => handleMapSearchChange(e.target.value)}
+                                    style={{
+                                        flex: 1, border: "none", outline: "none", background: "transparent",
+                                        fontSize: 13, color: "var(--text)", fontFamily: "var(--font)",
+                                    }}
+                                />
+                                {mapSearching && (
+                                    <div style={{
+                                        width: 14, height: 14, borderRadius: "50%",
+                                        border: "2px solid var(--border)", borderTopColor: "var(--primary)",
+                                        animation: "spin .7s linear infinite", flexShrink: 0,
+                                    }} />
+                                )}
+                                {mapSearch && !mapSearching && (
+                                    <button
+                                        onClick={() => { setMapSearch(""); setMapSearchResults([]); }}
+                                        style={{ background: "none", border: "none", cursor: "pointer", padding: 0, lineHeight: 0, color: "var(--muted)" }}
+                                    >
+                                        <Icon name="close" size={14} />
+                                    </button>
+                                )}
+                            </div>
+
+                            {mapSearchResults.length > 0 && (
+                                <div style={{
+                                    marginTop: 4, background: "var(--surface)", borderRadius: 12,
+                                    boxShadow: "0 4px 16px rgba(0,0,0,0.15)", border: "1px solid var(--border)",
+                                    overflow: "hidden",
+                                }}>
+                                    {mapSearchResults.map((r, i) => (
+                                        <button
+                                            key={i}
+                                            onClick={() => handleMapSearchSelect(r)}
+                                            style={{
+                                                width: "100%", textAlign: "left", padding: "10px 14px",
+                                                display: "flex", alignItems: "center", gap: 8,
+                                                fontSize: 13, color: "var(--text)", background: "transparent",
+                                                border: "none",
+                                                borderBottom: i < mapSearchResults.length - 1 ? "1px solid var(--border)" : "none",
+                                                cursor: "pointer", fontFamily: "var(--font)",
+                                            }}
+                                        >
+                                            <Icon name="pin" size={13} style={{ color: "var(--muted)", flexShrink: 0 }} />
+                                            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                                {r.display_name}
+                                            </span>
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                        {/* Fixed pin overlay */}
+                        <div style={{
+                            position: "absolute", top: "50%", left: "50%",
+                            transform: "translate(-50%, -50%)",
+                            zIndex: 900, pointerEvents: "none",
+                        }}>
+                            <div style={{
+                                width: 36, height: 36, borderRadius: 99,
+                                background: PLACE_TYPES[formData.category]?.color ?? "var(--primary)",
+                                border: "3px solid white", boxShadow: "0 2px 10px rgba(0,0,0,0.28)",
+                                display: "flex", alignItems: "center", justifyContent: "center",
+                            }}>
+                                <Icon name={PLACE_TYPES[formData.category]?.icon ?? "pin"} size={16} style={{ color: "white" }} />
+                            </div>
+                            <div style={{
+                                width: 0, height: 0, margin: "-2px auto 0",
+                                borderLeft: "5px solid transparent", borderRight: "5px solid transparent",
+                                borderTop: `7px solid ${PLACE_TYPES[formData.category]?.color ?? "var(--primary)"}`,
+                            }} />
+                        </div>
+
+                        {/* GPS button */}
+                        <button
+                            className="iconbtn iconbtn-surface"
+                            style={{ position: "absolute", bottom: 12, right: 12, zIndex: 900, width: 40, height: 40 }}
+                            onClick={() => {
+                                navigator.geolocation?.getCurrentPosition(
+                                    ({ coords }) => {
+                                        setFormData(p => ({ ...p, latitude: coords.latitude, longitude: coords.longitude }));
+                                        setMapFlyTo([coords.latitude, coords.longitude]);
+                                    },
+                                    () => alert("No se pudo obtener la ubicación."),
+                                    { timeout: 5000, enableHighAccuracy: true }
+                                );
+                            }}
+                            title="Mi ubicación"
+                        >
+                            <Icon name="gps" size={18} />
+                        </button>
+
+                        {/* Coordinate label */}
+                        <div style={{
+                            position: "absolute", bottom: 12, left: 12, zIndex: 900,
+                            background: "rgba(22,38,29,0.8)", color: "#ECF3EE",
+                            padding: "4px 10px", borderRadius: 8,
+                            fontFamily: "var(--mono)", fontSize: 11, fontWeight: 600,
+                            backdropFilter: "blur(4px)",
+                        }}>
+                            {coordLabel}
+                        </div>
                     </div>
-                </div>
-            )}
+                )}
+
+                {/* ── COORDS mode ── */}
+                {locMode === "coords" && (
+                    <div style={{ padding: "0 16px", display: "flex", flexDirection: "column", gap: 10, height: "100%", overflowY: "auto" }}>
+                        <div>
+                            <label className="label">Introduce coordenadas</label>
+                            <input
+                                className={`input ${coordValid === false ? "is-error" : ""}`}
+                                placeholder="37.123, -3.456 · o DMS: 37°39′30″N 3°43′04″W"
+                                value={coordInput}
+                                onChange={e => setCoordInput(e.target.value)}
+                                autoFocus
+                                style={{ fontFamily: "var(--mono)" }}
+                            />
+                            {coordValid === false && (
+                                <p className="input-hint is-error">Formato no reconocido. Prueba decimal o DMS.</p>
+                            )}
+                            {coordValid === true && (
+                                <p className="input-hint" style={{ color: "var(--success)" }}>
+                                    ✓ {coordLabel}
+                                </p>
+                            )}
+                            {coordValid === null && (
+                                <p className="input-hint">Decimal: 37.123, -3.456 · DMS: 37°39′30″N 3°43′04″W</p>
+                            )}
+                        </div>
+                        {/* Mini map preview */}
+                        <div style={{ flex: 1, borderRadius: 14, overflow: "hidden", minHeight: 180, position: "relative" }}>
+                            <LocationPickerMap
+                                lat={formData.latitude}
+                                lng={formData.longitude}
+                                flyTo={coordValid ? [formData.latitude, formData.longitude] : undefined}
+                                interactive={false}
+                            />
+                            {/* Center pin */}
+                            <div style={{
+                                position: "absolute", top: "50%", left: "50%",
+                                transform: "translate(-50%, -50%)",
+                                zIndex: 900, pointerEvents: "none",
+                            }}>
+                                <div style={{
+                                    width: 28, height: 28, borderRadius: 99,
+                                    background: "var(--primary)", border: "3px solid white",
+                                    boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
+                                }} />
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* ── PHOTO mode ── */}
+                {locMode === "photo" && (
+                    <div style={{ padding: "0 16px", display: "flex", flexDirection: "column", gap: 16, height: "100%", overflowY: "auto" }}>
+                        <div>
+                            <p style={{ fontSize: 14, color: "var(--text-2)", marginBottom: 12, lineHeight: 1.5 }}>
+                                Sube una foto y extraeremos las coordenadas GPS de sus metadatos EXIF.
+                            </p>
+                            <button
+                                className="btn btn-soft btn-md btn-full"
+                                onClick={() => exifInputRef.current?.click()}
+                            >
+                                <Icon name="image" size={18} />
+                                Elegir foto
+                            </button>
+                            <input ref={exifInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleExifPick} />
+                        </div>
+
+                        {exifStatus === "found" && (
+                            <div style={{
+                                background: "var(--success-soft)", color: "var(--success)",
+                                borderRadius: 12, padding: "12px 14px",
+                                display: "flex", alignItems: "center", gap: 10,
+                            }}>
+                                <Icon name="check" size={18} />
+                                <div>
+                                    <p style={{ fontWeight: 700, fontSize: 14, margin: 0 }}>GPS encontrado</p>
+                                    <p style={{ fontFamily: "var(--mono)", fontSize: 12, margin: "2px 0 0", opacity: 0.85 }}>{coordLabel}</p>
+                                </div>
+                            </div>
+                        )}
+
+                        {exifStatus === "notfound" && (
+                            <div style={{
+                                background: "var(--danger-soft)", color: "var(--danger)",
+                                borderRadius: 12, padding: "12px 14px",
+                                display: "flex", alignItems: "center", gap: 10,
+                            }}>
+                                <Icon name="info" size={18} />
+                                <p style={{ fontWeight: 600, fontSize: 14, margin: 0 }}>
+                                    Esta foto no contiene datos GPS.
+                                </p>
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
+
         </div>
     );
 
-
-
-
-    const renderStep2_Category = () => {
-        // Shared SVGs - ideally move to a shared file, but for now inlining
-
-
-        const categories = [
-            { id: "NATURE", label: "En plena naturaleza", icon: "/icons/naturaleza.svg", color: "" },
-            { id: "PARKING_DN", label: "Aparcamiento día y noche", icon: "/icons/parking.svg", color: "" },
-            { id: "REST_AREA", label: "Área de descanso", icon: "/icons/area-descanso.svg", color: "" },
-            { id: "PICNIC", label: "Zona de picnic", icon: "/icons/picnic.svg", color: "" },
-            { id: "AC_FREE", label: "Área de AC gratuita", icon: "/icons/autocaravana.svg", color: "" },
-            { id: "AC_PAID", label: "Área de AC de pago", icon: "/icons/ac_pago.svg", color: "" },
-            { id: "OFFROAD", label: "Off-road (4x4)", icon: "/icons/4x4.svg", color: "" },
-            { id: "CAMPING", label: "Camping", icon: "/icons/camping.svg", color: "" },
-            { id: "SERVICE", label: "Área de servicios sin aparcamiento", icon: "/icons/area-servicios.svg", color: "" },
-            { id: "PARKING_DAY", label: "Aparcamiento solo día", icon: "/icons/parking-dia.svg", color: "" },
-            { id: "CANDIDATO", label: "Candidato", icon: "/icons/candidato.svg", color: "" },
-        ];
-
-        return (
-            <div className="p-4 overflow-y-auto h-full bg-white dark:bg-gray-950">
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Selección del tipo de lugar</h2>
-                <div className="space-y-4">
-                    {categories.map(cat => (
-                        <label key={cat.id} className="flex items-center justify-between p-4 rounded-xl border border-gray-200 dark:border-gray-800 hover:border-emerald-500 dark:hover:border-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/10 transition-all cursor-pointer group">
-                            <div className="flex items-center gap-4">
-                                <div className={`w-10 h-10 flex items-center justify-center`}>
-                                    <img src={cat.icon} alt={cat.label} className="w-full h-full" />
-                                </div>
-                                <span className="font-medium text-gray-700 dark:text-gray-200 group-hover:text-emerald-700 dark:group-hover:text-emerald-400">{cat.label}</span>
+    const renderStep2 = () => (
+        <div style={{ padding: "16px 16px 24px", overflowY: "auto", height: "100%" }}>
+            <p style={{ fontSize: 13, color: "var(--muted)", marginBottom: 16, fontWeight: 600 }}>
+                ¿Qué tipo de lugar es?
+            </p>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
+                {TYPE_LIST.map(type => {
+                    const active = formData.category === type.id;
+                    return (
+                        <button
+                            key={type.id}
+                            onClick={() => setFormData(p => ({ ...p, category: type.id }))}
+                            style={{
+                                display: "flex", alignItems: "center", gap: 12,
+                                padding: "14px 14px",
+                                borderRadius: 16,
+                                border: `2px solid ${active ? type.color : "var(--border)"}`,
+                                background: active ? `${type.color}18` : "var(--surface)",
+                                cursor: "pointer",
+                                transition: "border-color .15s, background .15s",
+                                textAlign: "left",
+                            }}
+                        >
+                            <div style={{
+                                width: 40, height: 40, borderRadius: 12, flexShrink: 0,
+                                background: active ? type.color : "var(--surface-2)",
+                                display: "flex", alignItems: "center", justifyContent: "center",
+                                transition: "background .15s",
+                            }}>
+                                <Icon name={type.icon} size={20} style={{ color: active ? "#fff" : "var(--muted)" }} />
                             </div>
-                            <div className="relative flex items-center">
-                                <input
-                                    type="radio"
-                                    name="category"
-                                    value={cat.id}
-                                    checked={formData.category === cat.id}
-                                    onChange={() => setFormData(prev => ({ ...prev, category: cat.id }))}
-                                    className="peer h-6 w-6 border-2 border-gray-300 dark:border-gray-600 rounded-full checked:border-emerald-500 checked:bg-emerald-500 appearance-none transition-all bg-white dark:bg-gray-800"
-                                />
-                                <div className="absolute inset-0 m-auto w-2 h-2 rounded-full bg-white opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity"></div>
+                            <div>
+                                <p style={{ fontSize: 13, fontWeight: 700, color: active ? type.color : "var(--text)", margin: 0 }}>
+                                    {type.short}
+                                </p>
+                                <p style={{ fontSize: 11, color: "var(--muted)", margin: "2px 0 0", lineHeight: 1.3 }}>
+                                    {type.label}
+                                </p>
                             </div>
-                        </label>
-                    ))}
-                </div>
+                        </button>
+                    );
+                })}
             </div>
-        );
-    };
+        </div>
+    );
 
-    const renderStep3_Details = () => (
-        <div className="p-4 h-full bg-white dark:bg-gray-950 flex flex-col">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Detalles del lugar</h2>
-
-            <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Título</label>
+    const renderStep3 = () => (
+        <div style={{ padding: "16px 16px 0", display: "flex", flexDirection: "column", gap: 18, height: "100%", overflowY: "auto" }}>
+            {/* Nombre */}
+            <div>
+                <label className="label">Nombre del lugar</label>
                 <input
-                    type="text"
-                    className="w-full p-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-gray-900 dark:text-white"
-                    placeholder="Ej. Parking del Lago"
+                    className="input"
+                    placeholder="Ej. Mirador del Lago"
                     value={formData.title}
-                    onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                    onChange={e => setFormData(p => ({ ...p, title: e.target.value }))}
+                    autoFocus
                 />
             </div>
 
-            <div className="flex gap-4 mb-4">
-                <div className="flex-1">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Precio</label>
-                    <label className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-                        <input
-                            type="checkbox"
-                            checked={formData.isFree}
-                            onChange={(e) => setFormData(prev => ({ ...prev, isFree: e.target.checked }))}
-                            className="w-5 h-5 rounded border-gray-300 dark:border-gray-600 text-emerald-500 focus:ring-emerald-500 bg-white dark:bg-gray-800"
-                        />
-                        <span className="text-gray-700 dark:text-gray-300 font-medium">Es gratuito</span>
+            {/* Precio + plazas */}
+            <div style={{ display: "flex", gap: 12 }}>
+                <div style={{ flex: 1 }}>
+                    <label className="label">Precio</label>
+                    <label style={{
+                        display: "flex", alignItems: "center", justifyContent: "space-between",
+                        padding: "12px 14px", borderRadius: 14,
+                        background: formData.isFree ? "var(--success-soft)" : "var(--surface-2)",
+                        cursor: "pointer", transition: "background .15s",
+                    }}>
+                        <span style={{ fontWeight: 600, fontSize: 14, color: formData.isFree ? "var(--success)" : "var(--text-2)" }}>
+                            {formData.isFree ? "Gratuito" : "De pago"}
+                        </span>
+                        <div className={`switch ${formData.isFree ? "is-on" : ""}`}
+                            onClick={() => setFormData(p => ({ ...p, isFree: !p.isFree }))}>
+                            <span />
+                        </div>
                     </label>
                 </div>
 
-                <div className="flex-1">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Plazas</label>
-                    <div className="flex items-center gap-1 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-1">
-                        {[1, 2, 3, 4, 5].map((num) => (
+                <div style={{ flex: 1 }}>
+                    <label className="label">Plazas</label>
+                    <div style={{
+                        display: "flex", gap: 3, background: "var(--surface-2)",
+                        borderRadius: 14, padding: 4,
+                    }}>
+                        {[1, 2, 3, 4, 5].map(n => (
                             <button
-                                key={num}
-                                type="button"
-                                onClick={() => setFormData(prev => ({ ...prev, places: num }))}
-                                className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${formData.places === num
-                                    ? "bg-emerald-500 text-white shadow-sm"
-                                    : "text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-800"
-                                    }`}
+                                key={n}
+                                onClick={() => setFormData(p => ({ ...p, places: n }))}
+                                style={{
+                                    flex: 1, height: 36, borderRadius: 10, border: "none",
+                                    fontWeight: 700, fontSize: 13, cursor: "pointer",
+                                    background: formData.places === n ? "var(--primary)" : "transparent",
+                                    color: formData.places === n ? "var(--on-primary)" : "var(--muted)",
+                                    transition: "background .15s, color .15s",
+                                }}
                             >
-                                {num}{num === 5 ? "+" : ""}
+                                {n}{n === 5 ? "+" : ""}
                             </button>
                         ))}
                     </div>
                 </div>
             </div>
 
-            <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Valoración</label>
-                <div className="flex items-center gap-1">
-                    {[1, 2, 3, 4, 5].map((star) => (
+            {/* Valoración */}
+            <div>
+                <label className="label">Valoración</label>
+                <div style={{ display: "flex", gap: 4 }}>
+                    {[1, 2, 3, 4, 5].map(star => (
                         <button
                             key={star}
-                            type="button"
-                            onClick={() => setFormData(prev => ({ ...prev, rating: star }))}
-                            className={`p-1 transition-transform active:scale-95 focus:outline-none`}
+                            onClick={() => setFormData(p => ({ ...p, rating: p.rating === star ? 0 : star }))}
+                            style={{ background: "none", border: "none", cursor: "pointer", padding: 2, lineHeight: 0 }}
                         >
-                            <Star
-                                className={`w-8 h-8 ${formData.rating >= star ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`}
+                            <Icon
+                                name="star"
+                                size={30}
+                                filled={formData.rating >= star}
+                                style={{ color: formData.rating >= star ? "var(--warning)" : "var(--border-strong)" }}
                             />
                         </button>
                     ))}
                 </div>
             </div>
 
-            <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Descripción</label>
+            {/* Descripción */}
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", paddingBottom: 16 }}>
+                <label className="label">Descripción <span style={{ fontWeight: 400, color: "var(--faint)" }}>(opcional)</span></label>
                 <textarea
-                    className="w-full h-48 p-4 bg-gray-100 dark:bg-gray-900 rounded-xl border-none focus:ring-2 focus:ring-emerald-500 text-gray-700 dark:text-gray-200 resize-none"
-                    placeholder="Descripción del lugar (vista, instalaciones...)"
+                    className="input"
+                    placeholder="Vista, acceso, instalaciones…"
                     value={formData.description}
-                    onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                ></textarea>
+                    onChange={e => setFormData(p => ({ ...p, description: e.target.value }))}
+                    style={{ flex: 1, minHeight: 120, resize: "none" }}
+                />
             </div>
         </div>
     );
 
-    const renderStep4_Services = () => {
-        // Detailed services list matching the image
-        const services = [
-            { id: "pets", label: "Se permiten mascotas", icon: "/icons/mascotas.svg" },
-            { id: "water", label: "Agua potable", icon: "/icons/agua.svg" },
-            { id: "black_water", label: "Aguas negras", icon: "/icons/aguas-negras.svg" },
-            { id: "gray_water", label: "Aguas grises", icon: "/icons/aguas-grises.svg" },
-            { id: "trash", label: "Cubo de basura", icon: "/icons/basura.svg" },
-            { id: "toilets", label: "Baños públicos", icon: "/icons/banos.svg" },
-            { id: "showers", label: "Duchas (acceso posible)", icon: "/icons/ducha.svg" },
-            { id: "bakery", label: "Panadería", icon: "/icons/panaderia.svg" },
-            { id: "electricity", label: "Electricidad (acceso posible)", icon: "/icons/electricidad.svg" },
-            { id: "wifi", label: "WIFI", icon: "/icons/wifi.svg" },
-            { id: "pool", label: "Piscina", icon: "/icons/piscina.svg" },
-            { id: "laundry", label: "Lavandería", icon: "/icons/lavanderia.svg" },
-            { id: "car_wash", label: "Lavado de autocaravanas", icon: "/icons/lavado-autocaravanas.svg" },
-            { id: "internet", label: "Cobertura 5G", icon: "/icons/5g.svg" },
-        ];
+    const renderStep4 = () => (
+        <div style={{ padding: "16px 16px 0", display: "flex", flexDirection: "column", gap: 20, height: "100%", overflowY: "auto" }}>
+            {/* Servicios */}
+            <div>
+                <label className="label">Servicios disponibles</label>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                    {SERVICES_LIST.map(srv => {
+                        const active = formData.services.includes(srv.label);
+                        return (
+                            <button
+                                key={srv.label}
+                                className={`svc-chip ${active ? "is-on" : ""}`}
+                                onClick={() => setFormData(p => ({
+                                    ...p,
+                                    services: active
+                                        ? p.services.filter(s => s !== srv.label)
+                                        : [...p.services, srv.label],
+                                }))}
+                            >
+                                <Icon name={srv.icon} size={15} />
+                                {srv.label}
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
 
-        return (
-            <div className="p-4 h-full bg-white dark:bg-gray-950 overflow-y-auto">
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Servicios cercanos</h2>
-                <div className="space-y-4">
-                    {services.map(srv => (
-                        <label key={srv.id} className="flex items-center justify-between p-3 border-b border-gray-100 dark:border-gray-800 last:border-0 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center text-xl overflow-hidden p-1">
-                                    {srv.icon.startsWith('/') ? (
-                                        <img src={srv.icon} alt={srv.label} className="w-full h-full object-contain" />
-                                    ) : (
-                                        srv.icon
-                                    )}
-                                </div>
-                                <span className="text-gray-700 dark:text-gray-200 font-medium">{srv.label}</span>
-                            </div>
-                            <input
-                                type="checkbox"
-                                checked={formData.services.includes(srv.label)} // Storing label for now as string array in DB
-                                onChange={(e) => {
-                                    if (e.target.checked) setFormData(prev => ({ ...prev, services: [...prev.services, srv.label] }));
-                                    else setFormData(prev => ({ ...prev, services: prev.services.filter(s => s !== srv.label) }));
-                                }}
-                                className="h-6 w-6 rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-emerald-500 focus:ring-emerald-500"
+            {/* Fotos */}
+            <div style={{ paddingBottom: 24 }}>
+                <label className="label">Fotos <span style={{ fontWeight: 400, color: "var(--faint)" }}>(máx. 5)</span></label>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+                    {formData.images.map((img, idx) => (
+                        <div key={idx} style={{ position: "relative", aspectRatio: "1", borderRadius: 12, overflow: "hidden", background: "var(--surface-2)" }}>
+                            <img
+                                src={typeof img === "string" ? img : URL.createObjectURL(img)}
+                                alt=""
+                                style={{ width: "100%", height: "100%", objectFit: "cover" }}
                             />
-                        </label>
+                            {/* Edit/crop button */}
+                            <button
+                                onClick={() => {
+                                    const src = typeof img === "string" ? img : URL.createObjectURL(img);
+                                    setImageSrc(src);
+                                    setCroppingIdx(idx);
+                                }}
+                                style={{
+                                    position: "absolute", top: 4, left: 4, width: 24, height: 24,
+                                    borderRadius: 99, background: "rgba(0,0,0,0.55)",
+                                    border: "none", cursor: "pointer",
+                                    display: "flex", alignItems: "center", justifyContent: "center",
+                                    color: "white",
+                                }}
+                            >
+                                <Icon name="brush" size={12} />
+                            </button>
+                            {/* Delete button */}
+                            <button
+                                onClick={() => setFormData(p => ({ ...p, images: p.images.filter((_, i) => i !== idx) }))}
+                                style={{
+                                    position: "absolute", top: 4, right: 4, width: 24, height: 24,
+                                    borderRadius: 99, background: "rgba(229,72,77,0.9)",
+                                    border: "none", cursor: "pointer",
+                                    display: "flex", alignItems: "center", justifyContent: "center",
+                                    color: "white",
+                                }}
+                            >
+                                <Icon name="close" size={12} />
+                            </button>
+                        </div>
                     ))}
-                </div>
-            </div>
-        );
-    }
 
-    const renderStep5_Photos = () => (
-        <div className="p-4 h-full bg-white dark:bg-gray-950 flex flex-col">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Fotos del lugar</h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">Añade hasta 5 fotos. Clic para recortar/editar.</p>
-
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-4">
-                {formData.images.map((img, idx) => (
-                    <div key={idx} className="relative aspect-square rounded-xl overflow-hidden border border-gray-200 dark:border-gray-800 group">
-                        <img
-                            src={typeof img === 'string' ? img : URL.createObjectURL(img)}
-                            alt={`Preview ${idx}`}
-                            className="w-full h-full object-cover"
-                        />
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                    {formData.images.length < 5 && (
+                        <div style={{
+                            aspectRatio: "1", borderRadius: 12, overflow: "hidden",
+                            border: "2px dashed var(--border)", display: "flex",
+                            flexDirection: "column",
+                        }}>
                             <button
-                                onClick={() => editImage(idx)}
-                                className="p-2 bg-white/20 hover:bg-white/40 rounded-full text-white backdrop-blur-sm"
+                                onClick={() => cameraInputRef.current?.click()}
+                                style={{
+                                    flex: 1, display: "flex", flexDirection: "column",
+                                    alignItems: "center", justifyContent: "center", gap: 2,
+                                    background: "transparent", border: "none",
+                                    borderBottom: "1px solid var(--border)",
+                                    cursor: "pointer", color: "var(--muted)", fontSize: 11, fontWeight: 600,
+                                }}
                             >
-                                <Crop className="w-5 h-5" />
+                                <Icon name="camera" size={18} />
+                                Cámara
                             </button>
                             <button
-                                onClick={() => deleteImage(idx)}
-                                className="p-2 bg-red-500/80 hover:bg-red-500 rounded-full text-white backdrop-blur-sm"
+                                onClick={() => fileInputRef.current?.click()}
+                                style={{
+                                    flex: 1, display: "flex", flexDirection: "column",
+                                    alignItems: "center", justifyContent: "center", gap: 2,
+                                    background: "transparent", border: "none",
+                                    cursor: "pointer", color: "var(--muted)", fontSize: 11, fontWeight: 600,
+                                }}
                             >
-                                <Trash2 className="w-5 h-5" />
-                            </button>
-                        </div>
-                    </div>
-                ))}
-
-                {formData.images.length < 5 && (
-                    <div className="aspect-square border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl flex flex-col overflow-hidden">
-                        <button
-                            onClick={() => cameraInputRef.current?.click()}
-                            className="flex-1 w-full flex flex-col items-center justify-center gap-1 hover:bg-emerald-50 dark:hover:bg-emerald-900/10 text-gray-500 dark:text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors border-b border-gray-100 dark:border-gray-800"
-                        >
-                            <Camera className="w-6 h-6" />
-                            <span className="text-xs font-medium">Cámara</span>
-                        </button>
-                        <button
-                            onClick={() => fileInputRef.current?.click()}
-                            className="flex-1 w-full flex flex-col items-center justify-center gap-1 hover:bg-emerald-50 dark:hover:bg-emerald-900/10 text-gray-500 dark:text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
-                        >
-                            <span className="text-2xl leading-none font-light">+</span>
-                            <span className="text-xs font-medium">Galería</span>
-                        </button>
-                    </div>
-                )}
-            </div>
-
-            <input
-                type="file"
-                ref={fileInputRef}
-                className="hidden"
-                accept="image/*"
-                onChange={onFileChange}
-            />
-            <input
-                type="file"
-                ref={cameraInputRef}
-                className="hidden"
-                accept="image/*"
-                capture="environment"
-                onChange={onFileChange}
-            />
-
-            {/* Cropper Modal */}
-            {imageSrc && (
-                <div className="fixed inset-0 z-[6000] bg-black flex flex-col">
-                    <div className="p-4 flex justify-between items-center text-white shrink-0">
-                        <button onClick={cancelCrop}>Cancelar</button>
-                        <span className="font-bold">Editar foto</span>
-                        <button onClick={saveCroppedImage} className="text-emerald-400 font-bold">Guardar</button>
-                    </div>
-
-                    <div className="flex-1 relative bg-black">
-                        <Cropper
-                            image={imageSrc}
-                            crop={crop}
-                            zoom={zoom}
-                            aspect={aspectRatio}
-                            onCropChange={setCrop}
-                            onCropComplete={handleCropComplete}
-                            onZoomChange={setZoom}
-                        />
-                    </div>
-
-                    <div className="p-4 bg-black flex flex-col gap-4">
-                        <div className="flex justify-center gap-4">
-                            <button
-                                onClick={() => setAspectRatio(4 / 3)}
-                                className={`px-3 py-1 rounded text-xs ${aspectRatio === 4 / 3 ? 'bg-emerald-500 text-white' : 'bg-gray-800 text-gray-300'}`}
-                            >
-                                4:3
-                            </button>
-                            <button
-                                onClick={() => setAspectRatio(3 / 4)}
-                                className={`px-3 py-1 rounded text-xs ${aspectRatio === 3 / 4 ? 'bg-emerald-500 text-white' : 'bg-gray-800 text-gray-300'}`}
-                            >
-                                3:4
-                            </button>
-                            <button
-                                onClick={() => setAspectRatio(1)}
-                                className={`px-3 py-1 rounded text-xs ${aspectRatio === 1 ? 'bg-emerald-500 text-white' : 'bg-gray-800 text-gray-300'}`}
-                            >
-                                1:1
-                            </button>
-                            <button
-                                onClick={() => setAspectRatio(16 / 9)}
-                                className={`px-3 py-1 rounded text-xs ${aspectRatio === 16 / 9 ? 'bg-emerald-500 text-white' : 'bg-gray-800 text-gray-300'}`}
-                            >
-                                16:9
+                                <Icon name="image" size={18} />
+                                Galería
                             </button>
                         </div>
-                        <input
-                            type="range"
-                            value={zoom}
-                            min={1}
-                            max={3}
-                            step={0.1}
-                            aria-labelledby="Zoom"
-                            onChange={(e) => setZoom(Number(e.target.value))}
-                            className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-emerald-500"
-                        />
-                    </div>
+                    )}
                 </div>
-            )}
+            </div>
+
+            <input ref={fileInputRef}   type="file" accept="image/*"                       style={{ display: "none" }} onChange={onPhotoFileChange} />
+            <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" style={{ display: "none" }} onChange={onPhotoFileChange} />
         </div>
     );
-
-    if (!mounted) return null;
-
-    if (loadingLocation) {
-        return createPortal(
-            <div className="fixed inset-0 bg-white z-[5000] flex items-center justify-center">
-                <div className="flex flex-col items-center gap-4">
-                    <div className="w-12 h-12 border-4 border-emerald-200 border-t-emerald-500 rounded-full animate-spin"></div>
-                    <p className="text-gray-500 animate-pulse">Obteniendo tu ubicación...</p>
-                </div>
-            </div>,
-            document.body
-        );
-    }
 
     return createPortal(
-        <div className="fixed inset-0 bg-white z-[10000] flex flex-col h-screen w-screen">
-            {/* Header */}
-            <div className="h-14 flex items-center justify-between px-4 border-b border-gray-100 bg-white shrink-0">
-                <button onClick={handleBack} className="p-2 -ml-2 text-gray-600">
-                    <ArrowLeft className="w-6 h-6" />
-                </button>
-                <h1 className="text-lg font-semibold text-gray-700">{spot ? "Editando sitio" : "Añadiendo un lugar"}</h1>
-                <button onClick={() => { if (onCancel) onCancel(); else router.push("/pois"); }} className="p-2 -mr-2 text-gray-600">
-                    <X className="w-6 h-6" />
-                </button>
-            </div>
-
-            {/* Loader Overlay */}
+        <div style={{
+            position: "fixed", inset: 0, zIndex: 10000,
+            background: "var(--surface)", display: "flex", flexDirection: "column",
+        }}>
+            {/* Processing overlay */}
             {isProcessing && (
-                <div className="absolute inset-0 bg-white/60 backdrop-blur-sm z-[15000] flex flex-col items-center justify-center animate-in fade-in duration-200">
-                    <div className="flex flex-col items-center gap-4">
-                        <div className="w-12 h-12 border-4 border-emerald-200 border-t-emerald-500 rounded-full animate-spin"></div>
-                        <p className="text-gray-600 font-medium">Procesando...</p>
+                <div style={{
+                    position: "absolute", inset: 0, zIndex: 15000,
+                    background: "rgba(0,0,0,0.3)", backdropFilter: "blur(4px)",
+                    display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 12,
+                }}>
+                    <div style={{
+                        width: 44, height: 44, borderRadius: "50%",
+                        border: "3px solid var(--border)", borderTopColor: "var(--primary)",
+                        animation: "spin .7s linear infinite",
+                    }} />
+                    <p style={{ color: "var(--on-primary)", fontWeight: 600, fontSize: 14 }}>Guardando…</p>
+                </div>
+            )}
+
+            {/* Image cropper overlay */}
+            {imageSrc && (
+                <div style={{ position: "absolute", inset: 0, zIndex: 12000, background: "#000", display: "flex", flexDirection: "column" }}>
+                    <div style={{
+                        display: "flex", alignItems: "center", justifyContent: "space-between",
+                        padding: "12px 16px", color: "white", flexShrink: 0,
+                    }}>
+                        <button onClick={cancelCrop} style={{ background: "none", border: "none", color: "white", cursor: "pointer", fontWeight: 600 }}>Cancelar</button>
+                        <span style={{ fontWeight: 700 }}>Editar foto</span>
+                        <button onClick={saveCrop} style={{ background: "none", border: "none", color: "var(--success)", cursor: "pointer", fontWeight: 700 }}>Guardar</button>
+                    </div>
+                    <div style={{ flex: 1, position: "relative" }}>
+                        <Cropper image={imageSrc} crop={crop} zoom={zoom} aspect={aspect}
+                            onCropChange={setCrop} onCropComplete={(_, px) => setCroppedPixels(px)} onZoomChange={setZoom} />
+                    </div>
+                    <div style={{ padding: "12px 16px 24px", background: "#111", display: "flex", flexDirection: "column", gap: 10 }}>
+                        <div style={{ display: "flex", justifyContent: "center", gap: 8 }}>
+                            {[["4:3", 4/3], ["1:1", 1], ["3:4", 3/4], ["16:9", 16/9]].map(([label, val]) => (
+                                <button key={label as string} onClick={() => setAspect(val as number)} style={{
+                                    padding: "4px 12px", borderRadius: 8, border: "none", cursor: "pointer",
+                                    background: aspect === val ? "var(--primary)" : "#333",
+                                    color: aspect === val ? "white" : "#aaa",
+                                    fontSize: 12, fontWeight: 700,
+                                }}>
+                                    {label as string}
+                                </button>
+                            ))}
+                        </div>
+                        <input type="range" value={zoom} min={1} max={3} step={0.05}
+                            onChange={e => setZoom(+e.target.value)}
+                            style={{ accentColor: "var(--primary)" }} />
                     </div>
                 </div>
             )}
 
-            {/* Content Area */}
-            <div className="flex-1 overflow-hidden relative">
-                {step === 1 && renderStep1_Location()}
-                {step === 2 && renderStep2_Category()}
-                {step === 3 && renderStep3_Details()}
-                {step === 4 && renderStep4_Services()}
-                {step === 5 && renderStep5_Photos()}
+            {/* Header */}
+            <div style={{
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                padding: "0 16px", height: 56, borderBottom: "1px solid var(--border)",
+                flexShrink: 0,
+            }}>
+                <button
+                    className="iconbtn iconbtn-ghost"
+                    style={{ width: 36, height: 36 }}
+                    onClick={() => step > 1 ? setStep(s => s - 1) : close()}
+                >
+                    <Icon name="back" size={20} />
+                </button>
+                <span style={{ fontWeight: 800, fontSize: 16, letterSpacing: "-0.02em", color: "var(--text)" }}>
+                    {isEditing ? "Editar lugar" : step === 1 ? "¿Dónde está?" : step === 2 ? "¿Qué tipo de lugar?" : step === 3 ? "Lo básico" : "Servicios y fotos"}
+                </span>
+                <button className="iconbtn iconbtn-ghost" style={{ width: 36, height: 36 }} onClick={close}>
+                    <Icon name="close" size={18} />
+                </button>
             </div>
 
-            {/* Footer Actions */}
-            <div className="p-4 bg-white border-t border-gray-100 shrink-0 flex gap-4">
+            {/* Progress bar */}
+            <div style={{ height: 3, background: "var(--surface-2)", flexShrink: 0 }}>
+                <div style={{
+                    height: "100%", background: "var(--primary)",
+                    width: `${(step / TOTAL_STEPS) * 100}%`,
+                    transition: "width .3s ease",
+                }} />
+            </div>
+
+            {/* Step content */}
+            <div style={{ flex: 1, overflow: "hidden" }}>
+                {step === 1 && renderStep1()}
+                {step === 2 && renderStep2()}
+                {step === 3 && renderStep3()}
+                {step === 4 && renderStep4()}
+            </div>
+
+            {/* Footer */}
+            <div style={{
+                padding: "12px 16px 28px", borderTop: "1px solid var(--border)",
+                display: "flex", gap: 10, flexShrink: 0, background: "var(--surface)",
+            }}>
+                {step === 1 && !isEditing && (
+                    <button className="btn btn-ghost btn-md" style={{ flex: 1 }} onClick={() => submit(true)}>
+                        Guardar rápido
+                    </button>
+                )}
+                {step > 1 && (
+                    <button className="btn btn-ghost btn-md" style={{ flex: 1 }} onClick={() => setStep(s => s - 1)}>
+                        Anterior
+                    </button>
+                )}
                 <button
-                    onClick={() => { if (onCancel) onCancel(); else router.push("/pois"); }}
-                    className="flex-1 py-3 px-6 rounded-full bg-rose-400 text-white font-semibold shadow-md active:scale-95 transition-transform"
+                    className={`btn btn-md ${step === TOTAL_STEPS ? "btn-success" : "btn-primary"}`}
+                    style={{ flex: 2 }}
+                    onClick={() => step === TOTAL_STEPS ? submit(false) : setStep(s => s + 1)}
                 >
-                    Salir
-                </button>
-                <button
-                    onClick={handleNext}
-                    className={`flex-1 py-3 px-6 rounded-full font-semibold shadow-md active:scale-95 transition-transform ${step === 1 ? "bg-emerald-400 text-white" : "bg-slate-500 text-white" // Map step usually has distinct specific "It's here" button, trying to match reference style
-                        }`}
-                    style={{ backgroundColor: step === 1 ? '#4ade80' : '#8da2c0' }} // Trying to match the purplish-grey from screenshots for Next, green for Map confirm
-                >
-                    {step === 1 ? "¡Es aquí!" : isLastStep ? (spot ? "Guardar cambios" : "Crear lugar") : "Siguiente"}
+                    {step === TOTAL_STEPS
+                        ? (isEditing ? "Guardar cambios" : "Crear lugar")
+                        : "Siguiente"}
                 </button>
             </div>
+
+            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         </div>,
         document.body
-    );
-}
-
-// Helper to parse coordinate string (DMS or Decimal)
-function parseCoordinateString(input: string): { lat: number, lon: number } | null {
-    // 1. Try DMS format first (e.g. 37°39'30.5"N 3°43'04.2"W)
-    // Matches: degrees, minutes, seconds, direction (N/S/E/W)
-    // We look for two groups of this pattern
-    const dmsRegex = /(\d+)[°º\s]+(\d+)[`'\s]+(\d+(?:\.\d+)?)[´"\s]*([NSEW])/gi;
-    const dmsMatches = [...input.matchAll(dmsRegex)];
-
-    if (dmsMatches.length >= 2) {
-        const parseDMS = (deg: string, min: string, sec: string, dir: string) => {
-            let decimal = parseFloat(deg) + parseFloat(min) / 60 + parseFloat(sec) / 3600;
-            if (dir.toUpperCase() === 'S' || dir.toUpperCase() === 'W') {
-                decimal *= -1;
-            }
-            return decimal;
-        };
-
-        const lat = parseDMS(dmsMatches[0][1], dmsMatches[0][2], dmsMatches[0][3], dmsMatches[0][4]);
-        const lon = parseDMS(dmsMatches[1][1], dmsMatches[1][2], dmsMatches[1][3], dmsMatches[1][4]);
-        return { lat, lon };
-    }
-
-    // 2. Try Standard Decimal format
-    // Regex: /(-?\s*\d+(?:\.\d+)?)/g
-    const decimalMatches = input.match(/(-?\s*\d+(?:\.\d+)?)/g);
-    if (decimalMatches && decimalMatches.length >= 2) {
-        const lat = parseFloat(decimalMatches[0].replace(/\s/g, ''));
-        const lon = parseFloat(decimalMatches[1].replace(/\s/g, ''));
-        return { lat, lon };
-    }
-
-    return null;
-}
-
-// Helper component for Coordinates to manage focus/typing state
-function CoordinatesInput({ onChange, onCancel }: { onChange: (lat: number, lon: number) => void, onCancel: () => void }) {
-    const [value, setValue] = useState("");
-
-    const handleApply = () => {
-        const result = parseCoordinateString(value);
-
-        if (result) {
-            if (
-                !isNaN(result.lat) && !isNaN(result.lon) &&
-                result.lat >= -90 && result.lat <= 90 &&
-                result.lon >= -180 && result.lon <= 180
-            ) {
-                onChange(result.lat, result.lon);
-            } else {
-                alert("Coordenadas fuera de rango (-90 a 90, -180 a 180)");
-            }
-        } else {
-            alert("Formato no reconocido. Prueba:\n- Decimal: 37.123, -3.123\n- DMS: 37°39'30.5\"N 3°43'04.2\"W");
-        }
-    };
-
-    return (
-        <div>
-            <textarea
-                value={value}
-                onChange={(e) => setValue(e.target.value)}
-                placeholder="Ej: 37.123, -3.123&#10;o DMS: 37°39'30.5&quot;N 3°43'04.2&quot;W"
-                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-mono mb-6 focus:ring-2 focus:ring-emerald-500 outline-none resize-none h-24"
-                autoFocus
-            />
-
-            <div className="flex gap-3">
-                <button
-                    onClick={onCancel}
-                    className="flex-1 py-3 text-gray-600 font-medium rounded-xl hover:bg-gray-100 transition-colors"
-                >
-                    Cancelar
-                </button>
-                <button
-                    onClick={handleApply}
-                    className="flex-1 py-3 bg-emerald-500 text-white font-bold rounded-xl hover:bg-emerald-600 shadow-md transition-colors"
-                >
-                    Aceptar
-                </button>
-            </div>
-
-            <p className="text-xs text-gray-400 text-center mt-6">
-                Soporta formatos Decimal y DMS (Grados, Minutos, Segundos)
-            </p>
-        </div>
     );
 }

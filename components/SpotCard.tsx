@@ -1,91 +1,148 @@
-/* eslint-disable */
 "use client";
 
-import { Star, Camera } from "lucide-react";
+import { Icon } from "@/components/Icon";
 import FavoriteButton from "./FavoriteButton";
-import { getCategoryStyles } from "@/lib/categories";
-import { getServiceIconPath } from "@/lib/services";
+import { getPlaceType, getSpotStatus, getServiceIcon, coverPhoto } from "@/lib/placeTypes";
+
+const PERNOCTAR_CATS = new Set(["NATURE", "AC_FREE", "AC_PAID", "PARKING_DN", "CAMPING"]);
 
 interface SpotCardProps {
-    spot: any;
-    onClick: () => void;
+  spot: any;
+  onClick: () => void;
 }
 
 export default function SpotCard({ spot, onClick }: SpotCardProps) {
-    const { img: categoryIcon, label: categoryLabel } = getCategoryStyles(spot.category);
+  const type = getPlaceType(spot.category);
+  const status = getSpotStatus(spot.category);
+  const photo = coverPhoto(spot.images);
+  const aptaPernoctar = PERNOCTAR_CATS.has(spot.category);
+  const services: any[] = spot.services ?? [];
+  const visibleServices = services.slice(0, 5);
+  const extraServices = services.length - visibleServices.length;
 
-    return (
-        <div
-            onClick={onClick}
-            className="bg-white rounded-xl border-2 border-blue-600 cursor-pointer hover:shadow-md transition-all active:scale-[0.99]"
-        >
-            {/* Header Image */}
-            <div className="relative h-56 w-full bg-gray-200">
-                <img
-                    src={spot.images?.[0]?.url || "/placeholder-image.jpg"}
-                    alt={spot.title}
-                    className="w-full h-full object-cover rounded-t-[10px]"
-                />
+  return (
+    <div className="placecard" onClick={onClick}>
+      {/* ── Image ── */}
+      <div style={{ position: "relative", height: 160, overflow: "hidden", background: "var(--surface-2)" }}>
+        <img
+          src={photo}
+          alt={spot.title}
+          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+        />
 
-                {/* Favorite Button */}
-                <div className="absolute top-4 right-4 z-10">
-                    <div className="bg-white rounded-full p-2 shadow-sm">
-                        <FavoriteButton spotId={spot.id} initialIsFavorite={spot.isFavorite} />
-                    </div>
-                </div>
-
-                {/* Category Badge - Overlapping Bottom */}
-                <div className="absolute -bottom-7 left-5 z-20">
-                    <div className="w-14 h-14 rounded-full bg-white flex items-center justify-center shadow-md border border-gray-100">
-                        <img src={categoryIcon} alt={categoryLabel} className="w-8 h-8" />
-                    </div>
-                </div>
+        {/* Chips top-left: tipo + pernocta */}
+        <div style={{ position: "absolute", top: 10, left: 10, display: "flex", gap: 6 }}>
+          <div className="chip-glass">
+            <div style={{
+              width: 20, height: 20, borderRadius: 99, flexShrink: 0,
+              background: type.color, display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              <Icon name={type.icon} size={12} style={{ color: "#fff" }} strokeWidth={2.2} />
             </div>
-
-            {/* Content */}
-            <div className="pt-10 px-5 pb-5 rounded-b-xl">
-                {/* Title */}
-                <div className="mb-2">
-                    <h3 className="font-bold text-[#1e40af] text-xl leading-tight line-clamp-2">
-                        {spot.title}
-                    </h3>
-                </div>
-
-                {/* Description */}
-                <p className="text-gray-700 text-[0.95rem] line-clamp-4 mb-5 leading-relaxed font-medium">
-                    {spot.description || "Sin descripción."}
-                </p>
-
-                {/* Services - Removed filters and backgrounds, showing SVG as is from zero */}
-                <div className="flex flex-wrap gap-2 mb-6">
-                    {spot.services?.slice(0, 6).map((s: any) => {
-                        const iconPath = getServiceIconPath(s.service.name);
-                        if (!iconPath) return null;
-
-                        return (
-                            <img
-                                key={s.service.name}
-                                src={iconPath}
-                                alt={s.service.name}
-                                className="w-8 h-8"
-                                title={s.service.name}
-                            />
-                        );
-                    })}
-                </div>
-
-                {/* Footer Info */}
-                <div className="flex items-center justify-end gap-6 text-gray-400 font-bold text-lg mt-auto">
-                    <div className="flex items-center gap-1.5">
-                        <span className="text-gray-400">{spot.images?.length || 0}</span>
-                        <Camera className="w-6 h-6 fill-gray-400 text-gray-400" />
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                        <span className="text-gray-400">{spot.rating || 0}</span>
-                        <Star className="w-6 h-6 fill-gray-400 text-gray-400" />
-                    </div>
-                </div>
+            <span>{type.short}</span>
+          </div>
+          {aptaPernoctar && (
+            <div className="chip-glass">
+              <Icon name="moon" size={12} style={{ color: "#3D5A98" }} filled />
+              <span style={{ color: "#3D5A98" }}>Pernocta</span>
             </div>
+          )}
         </div>
-    );
+
+        {/* Favorite button (top-right) */}
+        <div style={{ position: "absolute", top: 10, right: 10 }}>
+          <FavoriteButton spotId={spot.id} initialIsFavorite={spot.isFavorite} />
+        </div>
+      </div>
+
+      {/* ── Content ── */}
+      <div style={{ padding: "12px 14px 14px" }}>
+
+        {/* Name + price */}
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8, marginBottom: 6 }}>
+          <h3 className="place-name" style={{ flex: 1, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+            {spot.title}
+          </h3>
+          <span style={{
+            fontSize: 13.5, fontWeight: 700, flexShrink: 0, paddingTop: 2,
+            color: spot.isFree ? "var(--success)" : "var(--text-2)",
+          }}>
+            {spot.isFree ? "Gratis" : "De pago"}
+          </span>
+        </div>
+
+        {/* Metadata row */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+          {(spot.rating ?? 0) > 0 && (
+            <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
+              <Icon name="star" size={13} filled style={{ color: "var(--warning)" }} />
+              <span className="meta-text">{spot.rating}</span>
+            </div>
+          )}
+          {typeof spot._distanceKm === "number" && (
+            <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
+              <Icon name="navigate" size={13} style={{ color: "var(--muted)" }} />
+              <span className="meta-text">
+                {spot._distanceKm < 1
+                  ? `${Math.round(spot._distanceKm * 1000)} m`
+                  : `${spot._distanceKm.toFixed(1)} km`}
+              </span>
+            </div>
+          )}
+          {(spot.places ?? 0) > 0 && (
+            <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
+              <Icon name="car" size={13} style={{ color: "var(--muted)" }} />
+              <span className="meta-text">{spot.places}{spot.places >= 5 ? "+" : ""}</span>
+            </div>
+          )}
+
+          {/* Status badge */}
+          <div style={{ marginLeft: "auto" }}>
+            {status === "verificado" ? (
+              <span style={{
+                display: "inline-flex", alignItems: "center", gap: 3,
+                padding: "3px 8px", borderRadius: 99, fontSize: 11, fontWeight: 800,
+                background: "var(--success-soft)", color: "var(--success)",
+              }}>
+                <Icon name="check" size={10} />
+                Verificado
+              </span>
+            ) : (
+              <span style={{
+                display: "inline-flex", alignItems: "center", gap: 3,
+                padding: "3px 8px", borderRadius: 99, fontSize: 11, fontWeight: 800,
+                background: "#FFF0EB", color: "#E2562A",
+              }}>
+                <Icon name="questionMark" size={10} />
+                Candidato
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Service icons */}
+        {services.length > 0 && (
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            {visibleServices.map((s: any) => (
+              <div
+                key={s.service?.name ?? s.id}
+                title={s.service?.name}
+                style={{
+                  width: 28, height: 28, borderRadius: 99,
+                  background: "var(--surface-2)", flexShrink: 0,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  color: "var(--muted)",
+                }}
+              >
+                <Icon name={getServiceIcon(s.service?.name ?? "")} size={14} />
+              </div>
+            ))}
+            {extraServices > 0 && (
+              <span className="meta-text">+{extraServices}</span>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }

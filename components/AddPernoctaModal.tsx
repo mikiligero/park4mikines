@@ -2,19 +2,24 @@
 
 import { useState, useEffect, useTransition } from "react";
 import dynamic from "next/dynamic";
-import { X, MapPin, Crosshair, Loader2, Moon } from "lucide-react";
 import { createPortal } from "react-dom";
+import { Icon } from "@/components/Icon";
 import { addPernocta, updatePernocta } from "@/lib/actions";
 
 const LocationPickerMap = dynamic(() => import("./LocationPickerMap"), {
-    loading: () => <div className="h-full w-full bg-gray-100 dark:bg-gray-800 animate-pulse flex items-center justify-center text-sm text-gray-400">Cargando mapa...</div>,
+    loading: () => (
+        <div style={{
+            height: "100%", width: "100%", background: "var(--surface-2)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 13, color: "var(--muted)",
+        }}>
+            Cargando mapa...
+        </div>
+    ),
     ssr: false,
 });
 
-interface Spot {
-    id: number;
-    title: string;
-}
+interface Spot { id: number; title: string }
 
 interface PernoctaData {
     id?: number;
@@ -27,7 +32,7 @@ interface PernoctaData {
     spotId?: number | null;
 }
 
-interface AddPernoctaModalProps {
+interface Props {
     onClose: () => void;
     spots?: Spot[];
     initialSpotId?: number | null;
@@ -36,36 +41,33 @@ interface AddPernoctaModalProps {
     editData?: PernoctaData;
 }
 
-// Returns today's date as YYYY-MM-DD
 function todayString() {
-    const d = new Date();
-    return d.toISOString().split("T")[0];
+    return new Date().toISOString().split("T")[0];
 }
 
-export default function AddPernoctaModal({ onClose, spots = [], initialSpotId, initialLat, initialLon, editData }: AddPernoctaModalProps) {
+export default function AddPernoctaModal({ onClose, spots = [], initialSpotId, initialLat, initialLon, editData }: Props) {
     const [isPending, startTransition] = useTransition();
     const [showMap, setShowMap] = useState(false);
     const [loadingGps, setLoadingGps] = useState(false);
     const [mounted, setMounted] = useState(false);
 
     const [form, setForm] = useState({
-        date: editData?.date?.split("T")[0] ?? todayString(),
-        latitude: editData?.latitude ?? initialLat ?? 40.416775,
+        date:      editData?.date?.split("T")[0] ?? todayString(),
+        latitude:  editData?.latitude  ?? initialLat ?? 40.416775,
         longitude: editData?.longitude ?? initialLon ?? -3.70379,
-        notes: editData?.notes ?? "",
-        weather: editData?.weather ?? "",
-        cost: editData?.cost != null ? String(editData.cost) : "0",
-        spotId: editData?.spotId ?? initialSpotId ?? "",
+        notes:     editData?.notes     ?? "",
+        weather:   editData?.weather   ?? "",
+        cost:      editData?.cost != null ? String(editData.cost) : "0",
+        spotId:    editData?.spotId ?? initialSpotId ?? "",
     });
 
     useEffect(() => {
         setMounted(true);
-        // Auto-get GPS on open (only for new pernoctas)
         if (!editData && initialLat === undefined) {
             setLoadingGps(true);
             navigator.geolocation?.getCurrentPosition(
-                (pos) => {
-                    setForm((prev) => ({ ...prev, latitude: pos.coords.latitude, longitude: pos.coords.longitude }));
+                pos => {
+                    setForm(p => ({ ...p, latitude: pos.coords.latitude, longitude: pos.coords.longitude }));
                     setLoadingGps(false);
                 },
                 () => setLoadingGps(false),
@@ -77,8 +79,8 @@ export default function AddPernoctaModal({ onClose, spots = [], initialSpotId, i
     const handleGps = () => {
         setLoadingGps(true);
         navigator.geolocation?.getCurrentPosition(
-            (pos) => {
-                setForm((prev) => ({ ...prev, latitude: pos.coords.latitude, longitude: pos.coords.longitude }));
+            pos => {
+                setForm(p => ({ ...p, latitude: pos.coords.latitude, longitude: pos.coords.longitude }));
                 setLoadingGps(false);
             },
             () => {
@@ -92,13 +94,13 @@ export default function AddPernoctaModal({ onClose, spots = [], initialSpotId, i
     const handleSubmit = () => {
         startTransition(async () => {
             const data = {
-                date: form.date,
-                latitude: form.latitude,
+                date:      form.date,
+                latitude:  form.latitude,
                 longitude: form.longitude,
-                notes: form.notes || undefined,
-                weather: form.weather || undefined,
-                cost: parseFloat(form.cost) || 0,
-                spotId: form.spotId ? Number(form.spotId) : null,
+                notes:     form.notes    || undefined,
+                weather:   form.weather  || undefined,
+                cost:      parseFloat(form.cost) || 0,
+                spotId:    form.spotId ? Number(form.spotId) : null,
             };
             if (editData?.id) {
                 await updatePernocta(editData.id, data);
@@ -112,39 +114,66 @@ export default function AddPernoctaModal({ onClose, spots = [], initialSpotId, i
     if (!mounted) return null;
 
     return createPortal(
-        <div className="fixed inset-0 z-[9000] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
-            <div className="bg-white dark:bg-gray-950 w-full sm:max-w-lg rounded-t-3xl sm:rounded-2xl shadow-2xl flex flex-col max-h-[95vh] overflow-hidden">
-                {/* Header */}
-                <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-800 shrink-0">
-                    <div className="flex items-center gap-2">
-                        <Moon className="h-5 w-5 text-indigo-500" />
-                        <h2 className="text-lg font-bold text-gray-900 dark:text-white">
+        <div
+            style={{
+                position: "fixed", inset: 0, zIndex: 9000,
+                background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)",
+                display: "flex", alignItems: "flex-end", justifyContent: "center",
+            }}
+            onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+        >
+            <div style={{
+                background: "var(--surface)", width: "100%", maxWidth: 520,
+                borderRadius: "26px 26px 0 0",
+                maxHeight: "92dvh", display: "flex", flexDirection: "column",
+                boxShadow: "var(--shadow-lg)", overflow: "hidden",
+            }}>
+                {/* ── Header ── */}
+                <div style={{
+                    display: "flex", alignItems: "center", justifyContent: "space-between",
+                    padding: "16px 20px 14px", borderBottom: "1px solid var(--border)", flexShrink: 0,
+                }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <div style={{
+                            width: 34, height: 34, borderRadius: 10,
+                            background: "var(--primary-soft)",
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                        }}>
+                            <Icon name="moon" size={17} style={{ color: "var(--primary-soft-text)" }} />
+                        </div>
+                        <h2 style={{ fontSize: 17, fontWeight: 800, letterSpacing: "-0.02em", color: "var(--text)", margin: 0 }}>
                             {editData ? "Editar pernocta" : "Nueva pernocta"}
                         </h2>
                     </div>
-                    <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-                        <X className="h-5 w-5 text-gray-500" />
+                    <button className="iconbtn iconbtn-ghost" style={{ width: 36, height: 36 }} onClick={onClose}>
+                        <Icon name="close" size={18} />
                     </button>
                 </div>
 
-                <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
-                    {/* Date */}
+                {/* ── Body ── */}
+                <div style={{ flex: 1, overflowY: "auto", padding: "20px 20px", display: "flex", flexDirection: "column", gap: 18 }}>
+
+                    {/* Fecha */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Fecha de la pernocta</label>
+                        <label className="label">Fecha de la pernocta</label>
                         <input
                             type="date"
                             value={form.date}
-                            onChange={(e) => setForm((p) => ({ ...p, date: e.target.value }))}
-                            className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all"
+                            onChange={e => setForm(p => ({ ...p, date: e.target.value }))}
+                            className="input"
                         />
-                        <p className="text-xs text-gray-400 mt-1">La noche del martes al miércoles → martes</p>
+                        <p className="input-hint">La noche del martes al miércoles → pon martes</p>
                     </div>
 
-                    {/* Location */}
+                    {/* Ubicación GPS */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Ubicación GPS</label>
-                        <div className="flex items-center gap-2 mb-2">
-                            <div className="flex-1 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-sm text-gray-600 dark:text-gray-400 font-mono">
+                        <label className="label">Ubicación GPS</label>
+                        <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+                            <div style={{
+                                flex: 1, padding: "10px 14px", borderRadius: 14,
+                                background: "var(--surface-2)", border: "1.5px solid var(--border)",
+                                fontSize: 13, color: "var(--muted)", fontFamily: "var(--mono)",
+                            }}>
                                 {loadingGps
                                     ? "Obteniendo posición..."
                                     : `${form.latitude.toFixed(5)}, ${form.longitude.toFixed(5)}`}
@@ -152,102 +181,112 @@ export default function AddPernoctaModal({ onClose, spots = [], initialSpotId, i
                             <button
                                 onClick={handleGps}
                                 disabled={loadingGps}
-                                className="p-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+                                className="btn btn-primary btn-sm"
+                                style={{ flexShrink: 0, width: 42, padding: 0 }}
                                 title="Mi posición actual"
                             >
-                                {loadingGps ? <Loader2 className="h-4 w-4 animate-spin" /> : <Crosshair className="h-4 w-4" />}
+                                <Icon name="gps" size={17} style={{ animation: loadingGps ? "spin .8s linear infinite" : "none" }} />
                             </button>
                             <button
-                                onClick={() => setShowMap((v) => !v)}
-                                className={`p-2.5 rounded-xl border transition-colors ${showMap ? "bg-indigo-50 dark:bg-indigo-900/30 border-indigo-300 dark:border-indigo-700 text-indigo-600" : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"}`}
+                                onClick={() => setShowMap(v => !v)}
+                                className={`btn btn-sm ${showMap ? "btn-soft" : "btn-ghost"}`}
+                                style={{ flexShrink: 0, width: 42, padding: 0 }}
                                 title="Seleccionar en mapa"
                             >
-                                <MapPin className="h-4 w-4" />
+                                <Icon name="pin" size={17} />
                             </button>
                         </div>
 
                         {showMap && (
-                            <div className="relative h-52 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700">
+                            <div style={{ height: 200, borderRadius: 16, overflow: "hidden", border: "1px solid var(--border)", position: "relative" }}>
                                 <LocationPickerMap
-                                    initialPosition={[form.latitude, form.longitude]}
-                                    onPositionChange={(pos) => setForm((p) => ({ ...p, latitude: pos.lat, longitude: pos.lng }))}
+                                    lat={form.latitude}
+                                    lng={form.longitude}
+                                    onMove={(lat: number, lng: number) => setForm(p => ({ ...p, latitude: lat, longitude: lng }))}
                                 />
-                                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-full pointer-events-none z-[500]">
-                                    <MapPin className="h-8 w-8 text-indigo-600 drop-shadow-md" fill="currentColor" />
+                                <div style={{
+                                    position: "absolute", top: "50%", left: "50%",
+                                    transform: "translate(-50%, -100%)",
+                                    pointerEvents: "none", zIndex: 500,
+                                }}>
+                                    <Icon name="pin" size={30} style={{ color: "var(--primary)", filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.3))" }} />
                                 </div>
                             </div>
                         )}
                     </div>
 
-                    {/* Spot link */}
+                    {/* Spot vinculado */}
                     {spots.length > 0 && (
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Sitio guardado (opcional)</label>
+                            <label className="label">Sitio guardado <span style={{ fontWeight: 500, color: "var(--faint)" }}>(opcional)</span></label>
                             <select
-                                value={form.spotId}
-                                onChange={(e) => setForm((p) => ({ ...p, spotId: e.target.value }))}
-                                className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all text-sm"
+                                value={String(form.spotId)}
+                                onChange={e => setForm(p => ({ ...p, spotId: e.target.value }))}
+                                className="input"
+                                style={{ cursor: "pointer" }}
                             >
                                 <option value="">Sin vincular</option>
-                                {spots.map((s) => (
+                                {spots.map(s => (
                                     <option key={s.id} value={s.id}>{s.title}</option>
                                 ))}
                             </select>
                         </div>
                     )}
 
-                    {/* Weather */}
+                    {/* Tiempo */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tiempo 🌤️ (opcional)</label>
+                        <label className="label">Tiempo <span style={{ fontWeight: 500, color: "var(--faint)" }}>(opcional)</span></label>
                         <input
                             type="text"
                             value={form.weather}
-                            onChange={(e) => setForm((p) => ({ ...p, weather: e.target.value }))}
-                            placeholder="Ej: soleado, lluvia, viento..."
-                            className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all text-sm"
+                            onChange={e => setForm(p => ({ ...p, weather: e.target.value }))}
+                            placeholder="Ej: soleado, lluvia, viento…"
+                            className="input"
                         />
                     </div>
 
-                    {/* Cost */}
+                    {/* Coste */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Coste € (opcional)</label>
+                        <label className="label">Coste € <span style={{ fontWeight: 500, color: "var(--faint)" }}>(opcional)</span></label>
                         <input
                             type="number"
                             min="0"
                             step="0.5"
                             value={form.cost}
-                            onChange={(e) => setForm((p) => ({ ...p, cost: e.target.value }))}
-                            className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all text-sm"
+                            onChange={e => setForm(p => ({ ...p, cost: e.target.value }))}
+                            className="input"
                         />
                     </div>
 
-                    {/* Notes */}
+                    {/* Notas */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Notas 📝 (opcional)</label>
+                        <label className="label">Notas <span style={{ fontWeight: 500, color: "var(--faint)" }}>(opcional)</span></label>
                         <textarea
                             value={form.notes}
-                            onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))}
-                            placeholder="Observaciones, incidencias..."
+                            onChange={e => setForm(p => ({ ...p, notes: e.target.value }))}
+                            placeholder="Observaciones, incidencias…"
                             rows={3}
-                            className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all text-sm resize-none"
+                            className="input"
+                            style={{ resize: "none", height: "auto" }}
                         />
                     </div>
+
                 </div>
 
-                {/* Footer */}
-                <div className="px-5 py-4 border-t border-gray-100 dark:border-gray-800 flex gap-3 shrink-0">
-                    <button
-                        onClick={onClose}
-                        className="flex-1 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                    >
+                {/* ── Footer ── */}
+                <div style={{
+                    padding: "14px 20px 28px", borderTop: "1px solid var(--border)",
+                    display: "flex", gap: 10, flexShrink: 0,
+                }}>
+                    <button onClick={onClose} className="btn btn-ghost btn-md" style={{ flex: 1 }}>
                         Cancelar
                     </button>
                     <button
                         onClick={handleSubmit}
                         disabled={isPending || loadingGps}
-                        className="flex-1 py-3 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+                        className="btn btn-primary btn-md"
+                        style={{ flex: 2 }}
                     >
-                        {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
                         {editData ? "Guardar cambios" : "Guardar pernocta"}
                     </button>
                 </div>

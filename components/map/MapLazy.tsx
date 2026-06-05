@@ -2,14 +2,25 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { Loader2 } from "lucide-react";
 
 const Map = dynamic(() => import("./Map"), {
     ssr: false,
     loading: () => (
-        <div className="flex h-screen w-full items-center justify-center bg-gray-100 dark:bg-gray-900">
-            <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
-            <span className="ml-2 text-gray-600 dark:text-gray-400">Cargando mapa...</span>
+        <div style={{
+            display: "flex", height: "100vh", width: "100%",
+            alignItems: "center", justifyContent: "center",
+            flexDirection: "column", gap: 14, background: "var(--bg)",
+        }}>
+            <div style={{
+                width: 40, height: 40, borderRadius: "50%",
+                border: "3px solid var(--border)",
+                borderTopColor: "var(--primary)",
+                animation: "spin 0.8s linear infinite",
+            }} />
+            <p style={{ color: "var(--muted)", fontSize: 14, fontWeight: 600, margin: 0 }}>
+                Cargando mapa…
+            </p>
+            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         </div>
     ),
 });

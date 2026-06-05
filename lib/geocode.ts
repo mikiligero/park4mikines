@@ -3,6 +3,8 @@
  * the Nominatim API (OpenStreetMap). Free, no API key required.
  * Returns null on error or if no result is found.
  */
+import { logger } from "@/lib/logger";
+
 export interface GeocodeResult {
     locationName: string | null;
     province: string | null;
@@ -16,6 +18,7 @@ export async function reverseGeocode(lat: number, lon: number): Promise<GeocodeR
             headers: {
                 "User-Agent": "Park4Mikines/1.0 (caravan-app)",
             },
+            signal: AbortSignal.timeout(5000),
         });
 
         if (!res.ok) return null;
@@ -46,7 +49,8 @@ export async function reverseGeocode(lat: number, lon: number): Promise<GeocodeR
             province: province || null,
             country: country || null,
         };
-    } catch {
+    } catch (error) {
+        logger.warn("Geocoding failed", { lat, lon, error });
         return null;
     }
 }

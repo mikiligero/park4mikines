@@ -24,7 +24,7 @@ ENV NEXT_TELEMETRY_DISABLED 1
 # We use a dummy env var here because the build step needs to generate the client code,
 # but doesn't strictly need the DB connection at this stage usually.
 # However, for SQLite, it's simple.
-ENV DATABASE_URL "file:./dev.db"
+ENV DATABASE_URL "file:./app.db"
 RUN npx prisma generate
 
 RUN npm run build
@@ -62,6 +62,8 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 # Copy prisma schema and migrations if needed
 # Copy prisma schema and migrations
 COPY --from=builder /app/prisma ./prisma
+COPY entrypoint.sh ./entrypoint.sh
+RUN chmod +x entrypoint.sh
 # Ensure nextjs user owns everything we just copied to avoid permission issues
 # (Using RUN chown instead of COPY flag for maximum compatibility)
 RUN chown -R nextjs:nodejs ./public ./prisma
@@ -71,7 +73,6 @@ USER nextjs
 EXPOSE 3000
 
 ENV PORT 3000
-# set hostname to localhost
 ENV HOSTNAME "0.0.0.0"
 
-CMD ["node", "server.js"]
+CMD ["./entrypoint.sh"]

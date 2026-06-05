@@ -2,8 +2,9 @@ import { SignJWT, jwtVerify } from "jose";
 import bcrypt from "bcryptjs";
 import { cookies } from "next/headers";
 
-const SECRET_KEY = process.env.JWT_SECRET || "default_secret_dev_only";
-const key = new TextEncoder().encode(SECRET_KEY);
+const jwtSecret = process.env.JWT_SECRET;
+if (!jwtSecret) throw new Error("JWT_SECRET environment variable is required");
+const key = new TextEncoder().encode(jwtSecret);
 
 export async function hashPassword(password: string) {
     return await bcrypt.hash(password, 10);

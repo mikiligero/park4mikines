@@ -7,6 +7,8 @@ import sharp from "sharp";
 import path from "path";
 import { revalidatePath } from "next/cache";
 import { SpotCategory } from "@/lib/types";
+import { spotSchema, pernoctaSchema } from "@/lib/schemas";
+import { logger } from "@/lib/logger";
 import bcrypt from "bcryptjs";
 
 export async function createSpot(formData: FormData) {
@@ -15,14 +17,19 @@ export async function createSpot(formData: FormData) {
         redirect("/login");
     }
 
-    const title = formData.get("title") as string;
-    const description = formData.get("description") as string;
-    const category = formData.get("category") as SpotCategory;
-    const latitude = parseFloat(formData.get("latitude") as string);
-    const longitude = parseFloat(formData.get("longitude") as string);
-    const rating = parseInt(formData.get("rating") as string) || 0;
-    const isFree = formData.get("isFree") === "true";
-    const places = parseInt(formData.get("places") as string) || 1;
+    const parsed = spotSchema.safeParse({
+        title: formData.get("title"),
+        description: formData.get("description") || undefined,
+        category: formData.get("category"),
+        latitude: parseFloat(formData.get("latitude") as string),
+        longitude: parseFloat(formData.get("longitude") as string),
+        rating: parseInt(formData.get("rating") as string) || 0,
+        isFree: formData.get("isFree") === "true",
+        places: parseInt(formData.get("places") as string) || 1,
+    });
+    if (!parsed.success) return;
+
+    const { title, description, category, latitude, longitude, rating, isFree, places } = parsed.data;
 
     // Handle Images
     const files = formData.getAll("images") as File[];
@@ -42,7 +49,7 @@ export async function createSpot(formData: FormData) {
 
                 imageUrls.push(`/uploads/${filename}`);
             } catch (error) {
-                console.error("Error processing image:", error);
+                logger.error("Error processing image", { error });
             }
         }
     }
@@ -97,14 +104,19 @@ export async function updateSpot(id: number, formData: FormData) {
         return { success: false, error: "Forbidden" };
     }
 
-    const title = formData.get("title") as string;
-    const description = formData.get("description") as string;
-    const category = formData.get("category") as SpotCategory;
-    const latitude = parseFloat(formData.get("latitude") as string);
-    const longitude = parseFloat(formData.get("longitude") as string);
-    const rating = parseInt(formData.get("rating") as string) || 0;
-    const isFree = formData.get("isFree") === "true";
-    const places = parseInt(formData.get("places") as string) || 1;
+    const parsed = spotSchema.safeParse({
+        title: formData.get("title"),
+        description: formData.get("description") || undefined,
+        category: formData.get("category"),
+        latitude: parseFloat(formData.get("latitude") as string),
+        longitude: parseFloat(formData.get("longitude") as string),
+        rating: parseInt(formData.get("rating") as string) || 0,
+        isFree: formData.get("isFree") === "true",
+        places: parseInt(formData.get("places") as string) || 1,
+    });
+    if (!parsed.success) return { success: false, error: "Datos inválidos" };
+
+    const { title, description, category, latitude, longitude, rating, isFree, places } = parsed.data;
 
     // Handle Images
     const files = formData.getAll("images") as File[];
@@ -125,7 +137,7 @@ export async function updateSpot(id: number, formData: FormData) {
 
                 newImageUrls.push(`/uploads/${filename}`);
             } catch (error) {
-                console.error("Error processing image:", error);
+                logger.error("Error processing image", { error });
             }
         }
     }
@@ -369,7 +381,7 @@ export async function deleteSpot(id: number) {
         revalidatePath("/pois");
         return { success: true };
     } catch (error) {
-        console.error("Error deleting spot:", error);
+        logger.error("Error deleting spot", { id, error });
         return { success: false, error: "Internal server error" };
     }
 }
@@ -391,7 +403,7 @@ export async function updateProfile(formData: FormData) {
         revalidatePath("/");
         return { success: true };
     } catch (error) {
-        console.error("Update profile error:", error);
+        logger.error("Update profile error", { error });
         return { success: false, error: "Error updating profile (username might be taken)" };
     }
 }
@@ -448,6 +460,9 @@ export async function addPernocta(data: {
     const session = await getSession();
     if (!session) redirect("/login");
 
+    const parsed = pernoctaSchema.safeParse(data);
+    if (!parsed.success) return;
+
     const geo = await reverseGeocode(data.latitude, data.longitude);
 
     await prisma.pernocta.create({
@@ -480,6 +495,9 @@ export async function updatePernocta(id: number, data: {
 }) {
     const session = await getSession();
     if (!session) redirect("/login");
+
+    const parsed = pernoctaSchema.safeParse(data);
+    if (!parsed.success) return;
 
     const pernocta = await prisma.pernocta.findUnique({ where: { id } });
     if (!pernocta || pernocta.userId !== (session.userId as number)) return;
@@ -552,7 +570,7 @@ export async function createList(data: { name: string; type: string; icon: strin
         revalidatePath("/");
         return { success: true };
     } catch (error) {
-        console.error("Error creating list:", error);
+        logger.error("Error creating list", { error });
         return { success: false, error: "Error al crear la lista. El tipo podría ya existir." };
     }
 }
@@ -573,7 +591,7 @@ export async function updateList(id: number, data: { name: string; icon: string 
         revalidatePath("/");
         return { success: true };
     } catch (error) {
-        console.error("Error updating list:", error);
+        logger.error("Error updating list", { id, error });
         return { success: false, error: "Error al actualizar la lista." };
     }
 }
@@ -591,7 +609,7 @@ export async function toggleListVisibility(id: number, isVisible: boolean) {
         revalidatePath("/");
         return { success: true };
     } catch (error) {
-        console.error("Error toggling list visibility:", error);
+        logger.error("Error toggling list visibility", { id, error });
         return { success: false, error: "Error al cambiar la visibilidad." };
     }
 }
@@ -619,7 +637,7 @@ export async function deleteList(id: number) {
         revalidatePath("/");
         return { success: true };
     } catch (error) {
-        console.error("Error deleting list:", error);
+        logger.error("Error deleting list", { id, error });
         return { success: false, error: "Error al eliminar la lista y sus elementos." };
     }
 }

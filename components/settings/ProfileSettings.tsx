@@ -1,44 +1,46 @@
 "use client";
 
 import { useState } from "react";
+import { Icon } from "@/components/Icon";
 import { updateProfile, changePassword } from "@/lib/actions";
-import { User, Lock, Save, Loader2, CheckCircle, AlertCircle } from "lucide-react";
 
-export default function ProfileSettings({ user }: { user: any }) { // eslint-disable-line @typescript-eslint/no-explicit-any
-    const [loadingProfile, setLoadingProfile] = useState(false);
+function Msg({ type, text }: { type: "success" | "error"; text: string }) {
+    return (
+        <div style={{
+            display: "flex", alignItems: "center", gap: 8,
+            padding: "10px 14px", borderRadius: 12, fontSize: 13, fontWeight: 600,
+            background: type === "success" ? "var(--success-soft)" : "var(--danger-soft)",
+            color: type === "success" ? "var(--success)" : "var(--danger)",
+        }}>
+            <Icon name={type === "success" ? "check" : "close"} size={14} />
+            {text}
+        </div>
+    );
+}
+
+export default function ProfileSettings({ user }: { user: any }) {
+    const [loadingProfile, setLoadingProfile]   = useState(false);
     const [loadingPassword, setLoadingPassword] = useState(false);
-    const [profileMsg, setProfileMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null);
-    const [passMsg, setPassMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+    const [profileMsg, setProfileMsg]           = useState<{ type: "success" | "error"; text: string } | null>(null);
+    const [passMsg, setPassMsg]                 = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-    const [profileData, setProfileData] = useState({
-        name: user?.name || "",
-        username: user?.username || ""
-    });
-
-    const [passData, setPassData] = useState({
-        currentPassword: "",
-        newPassword: "",
-        confirmPassword: ""
-    });
+    const [profileData, setProfileData] = useState({ name: user?.name || "", username: user?.username || "" });
+    const [passData, setPassData]       = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
 
     const handleProfileSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoadingProfile(true);
         setProfileMsg(null);
-
-        const formData = new FormData();
-        formData.append("name", profileData.name);
-        formData.append("username", profileData.username);
-
+        const fd = new FormData();
+        fd.append("name", profileData.name);
+        fd.append("username", profileData.username);
         try {
-            const res = await updateProfile(formData);
-            if (res.success) {
-                setProfileMsg({ type: 'success', text: "Perfil actualizado correctamente." });
-            } else {
-                setProfileMsg({ type: 'error', text: res.error as string });
-            }
-        } catch (error) {
-            setProfileMsg({ type: 'error', text: "Error al actualizar perfil." });
+            const res = await updateProfile(fd);
+            setProfileMsg(res.success
+                ? { type: "success", text: "Perfil actualizado correctamente." }
+                : { type: "error",   text: res.error as string });
+        } catch {
+            setProfileMsg({ type: "error", text: "Error al actualizar perfil." });
         } finally {
             setLoadingProfile(false);
         }
@@ -48,137 +50,129 @@ export default function ProfileSettings({ user }: { user: any }) { // eslint-dis
         e.preventDefault();
         setLoadingPassword(true);
         setPassMsg(null);
-
-        const formData = new FormData();
-        formData.append("currentPassword", passData.currentPassword);
-        formData.append("newPassword", passData.newPassword);
-        formData.append("confirmPassword", passData.confirmPassword);
-
+        const fd = new FormData();
+        fd.append("currentPassword", passData.currentPassword);
+        fd.append("newPassword", passData.newPassword);
+        fd.append("confirmPassword", passData.confirmPassword);
         try {
-            const res = await changePassword(formData);
+            const res = await changePassword(fd);
             if (res.success) {
-                setPassMsg({ type: 'success', text: "Contraseña cambiada correctamente." });
+                setPassMsg({ type: "success", text: "Contraseña cambiada correctamente." });
                 setPassData({ currentPassword: "", newPassword: "", confirmPassword: "" });
             } else {
-                setPassMsg({ type: 'error', text: res.error as string });
+                setPassMsg({ type: "error", text: res.error as string });
             }
-        } catch (error) {
-            setPassMsg({ type: 'error', text: "Error al cambiar contraseña." });
+        } catch {
+            setPassMsg({ type: "error", text: "Error al cambiar contraseña." });
         } finally {
             setLoadingPassword(false);
         }
     };
 
+    const passwordsMatch = passData.newPassword.length > 0 && passData.newPassword === passData.confirmPassword;
+    const passwordLong   = passData.newPassword.length >= 8;
+
     return (
-        <section className="space-y-6">
-            {/* Basic Info */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
-                    <User className="w-6 h-6 text-purple-600" />
-                    Mi Perfil
-                </h2>
-                <p className="text-gray-500 dark:text-gray-400 text-sm mb-6">Actualiza tus datos básicos.</p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
-                <form onSubmit={handleProfileSubmit} className="space-y-4">
+            {/* ── Mi Perfil ── */}
+            <section style={{ background: "var(--surface)", borderRadius: 20, padding: "20px 20px", border: "1px solid var(--border)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                    <Icon name="user" size={18} style={{ color: "var(--primary)" }} />
+                    <h2 style={{ fontSize: 16, fontWeight: 800, letterSpacing: "-0.02em", color: "var(--text)", margin: 0 }}>
+                        Mi Perfil
+                    </h2>
+                </div>
+                <p style={{ fontSize: 13, color: "var(--muted)", marginBottom: 18 }}>Actualiza tus datos básicos.</p>
+
+                <form onSubmit={handleProfileSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nombre</label>
+                        <label className="label" htmlFor="p-name">Nombre</label>
                         <input
-                            type="text"
+                            id="p-name" type="text" className="input"
                             value={profileData.name}
-                            onChange={(e) => setProfileData({ ...profileData, name: e.target.value })}
-                            className="w-full p-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-purple-500 outline-none"
+                            onChange={e => setProfileData(d => ({ ...d, name: e.target.value }))}
                         />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Usuario</label>
+                        <label className="label" htmlFor="p-username">Usuario</label>
                         <input
-                            type="text"
+                            id="p-username" type="text" className="input"
                             value={profileData.username}
-                            onChange={(e) => setProfileData({ ...profileData, username: e.target.value })}
-                            className="w-full p-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-purple-500 outline-none"
+                            onChange={e => setProfileData(d => ({ ...d, username: e.target.value }))}
                         />
                     </div>
-
-                    <button
-                        type="submit"
-                        disabled={loadingProfile}
-                        className="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium flex items-center gap-2 disabled:opacity-50 transition-colors"
-                    >
-                        {loadingProfile ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                    <button type="submit" disabled={loadingProfile} className="btn btn-primary btn-md" style={{ alignSelf: "flex-start", gap: 8 }}>
+                        <Icon name="save" size={16} style={{ animation: loadingProfile ? "spin .8s linear infinite" : "none" }} />
                         Guardar cambios
                     </button>
-
-                    {profileMsg && (
-                        <div className={`p-3 rounded-lg flex items-center gap-2 text-sm ${profileMsg.type === 'success'
-                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-100 dark:bg-emerald-900/20 dark:border-emerald-800'
-                            : 'bg-red-50 text-red-700 border border-red-100 dark:bg-red-900/20 dark:border-red-800'
-                            }`}>
-                            {profileMsg.type === 'success' ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
-                            {profileMsg.text}
-                        </div>
-                    )}
+                    {profileMsg && <Msg {...profileMsg} />}
                 </form>
-            </div>
+            </section>
 
-            {/* Password */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
-                    <Lock className="w-6 h-6 text-amber-600" />
-                    Cambiar Contraseña
-                </h2>
-                <p className="text-gray-500 dark:text-gray-400 text-sm mb-6">Asegura tu cuenta con una contraseña fuerte.</p>
+            {/* ── Cambiar contraseña ── */}
+            <section style={{ background: "var(--surface)", borderRadius: 20, padding: "20px 20px", border: "1px solid var(--border)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                    <Icon name="lock" size={18} style={{ color: "var(--warning)" }} />
+                    <h2 style={{ fontSize: 16, fontWeight: 800, letterSpacing: "-0.02em", color: "var(--text)", margin: 0 }}>
+                        Cambiar contraseña
+                    </h2>
+                </div>
+                <p style={{ fontSize: 13, color: "var(--muted)", marginBottom: 18 }}>Usa una contraseña que no utilices en otros sitios.</p>
 
-                <form onSubmit={handlePasswordSubmit} className="space-y-4">
+                <form onSubmit={handlePasswordSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Contraseña actual</label>
+                        <label className="label" htmlFor="p-curr">Contraseña actual</label>
                         <input
-                            type="password"
+                            id="p-curr" type="password" className="input" placeholder="Tu contraseña actual"
                             value={passData.currentPassword}
-                            onChange={(e) => setPassData({ ...passData, currentPassword: e.target.value })}
-                            className="w-full p-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-amber-500 outline-none"
+                            onChange={e => setPassData(d => ({ ...d, currentPassword: e.target.value }))}
                         />
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nueva contraseña</label>
-                            <input
-                                type="password"
-                                value={passData.newPassword}
-                                onChange={(e) => setPassData({ ...passData, newPassword: e.target.value })}
-                                className="w-full p-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-amber-500 outline-none"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Confirmar nueva</label>
-                            <input
-                                type="password"
-                                value={passData.confirmPassword}
-                                onChange={(e) => setPassData({ ...passData, confirmPassword: e.target.value })}
-                                className="w-full p-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-amber-500 outline-none"
-                            />
-                        </div>
+                    <div>
+                        <label className="label" htmlFor="p-new">Nueva contraseña</label>
+                        <input
+                            id="p-new" type="password" className="input" placeholder="Mínimo 8 caracteres"
+                            value={passData.newPassword}
+                            onChange={e => setPassData(d => ({ ...d, newPassword: e.target.value }))}
+                        />
                     </div>
+                    <div>
+                        <label className="label" htmlFor="p-conf">Repetir nueva contraseña</label>
+                        <input
+                            id="p-conf" type="password" className="input" placeholder="Vuelve a escribirla"
+                            value={passData.confirmPassword}
+                            onChange={e => setPassData(d => ({ ...d, confirmPassword: e.target.value }))}
+                        />
+                    </div>
+
+                    {/* Hints de validación */}
+                    {passData.newPassword.length > 0 && (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                            {[
+                                { ok: passwordLong,   text: "Al menos 8 caracteres" },
+                                { ok: passwordsMatch, text: "Las dos contraseñas coinciden" },
+                            ].map(h => (
+                                <div key={h.text} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600, color: h.ok ? "var(--success)" : "var(--faint)" }}>
+                                    <Icon name={h.ok ? "check" : "close"} size={12} />
+                                    {h.text}
+                                </div>
+                            ))}
+                        </div>
+                    )}
 
                     <button
                         type="submit"
-                        disabled={loadingPassword}
-                        className="px-6 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-medium flex items-center gap-2 disabled:opacity-50 transition-colors"
+                        disabled={loadingPassword || !passwordLong || !passwordsMatch}
+                        className="btn btn-primary btn-md"
+                        style={{ alignSelf: "flex-start", gap: 8 }}
                     >
-                        {loadingPassword ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                        <Icon name="lock" size={16} style={{ animation: loadingPassword ? "spin .8s linear infinite" : "none" }} />
                         Actualizar contraseña
                     </button>
-
-                    {passMsg && (
-                        <div className={`p-3 rounded-lg flex items-center gap-2 text-sm ${passMsg.type === 'success'
-                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-100 dark:bg-emerald-900/20 dark:border-emerald-800'
-                            : 'bg-red-50 text-red-700 border border-red-100 dark:bg-red-900/20 dark:border-red-800'
-                            }`}>
-                            {passMsg.type === 'success' ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
-                            {passMsg.text}
-                        </div>
-                    )}
+                    {passMsg && <Msg {...passMsg} />}
                 </form>
-            </div>
-        </section>
+            </section>
+        </div>
     );
 }

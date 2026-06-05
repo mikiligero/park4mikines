@@ -2,7 +2,546 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
-@theme {
-    --color-foreground: var(--foreground);
-    --color-background: var(--background);
+/* ══════════════════════════════════════════════════════════
+   FASE 1 — Design tokens: paleta Bosque (modo claro)
+   ══════════════════════════════════════════════════════════ */
+:root {
+  /* brand */
+  --primary:           #1F7A52;
+  --primary-hover:     #196845;
+  --on-primary:        #FFFFFF;
+  --primary-soft:      #E4F1EA;
+  --primary-soft-text: #185E40;
+
+  /* neutros tintados en verde (NO grises puros) */
+  --bg:           #F5F7F3;
+  --surface:      #FFFFFF;
+  --surface-2:    #EFF2EC;
+  --surface-alt:  #F0F4ED;
+  --text:         #16261D;
+  --text-2:       #3C4B43;
+  --muted:        #5E6E64;
+  --faint:        #8A988F;
+  --border:       #E5EAE1;
+  --border-strong:#D6DDD0;
+
+  /* acentos semánticos */
+  --success:      #16A36A;
+  --success-soft: #E4F4EC;
+  --danger:       #E5484D;
+  --danger-soft:  #FBE7E7;
+  --warning:      #E0A21A;
+  --water:        #2B7FE0;
+
+  /* sombras */
+  --shadow-sm: 0 1px 2px rgba(20,30,24,0.06);
+  --shadow-md: 0 6px 22px rgba(20,30,24,0.10);
+  --shadow-lg: 0 18px 50px rgba(20,30,24,0.16);
+
+  /* radios */
+  --radius-sm:    11px;
+  --radius-md:    14px;
+  --radius-lg:    16px;
+  --radius-card:  20px;
+  --radius-sheet: 26px;
+  --radius-modal: 24px;
+  --radius-pill:  99px;
+}
+
+/* ── Paleta Atardecer (modo claro) ───────────────────────── */
+:root[data-palette="atardecer"] {
+  --primary:           #B85C38;
+  --primary-hover:     #9E4B2D;
+  --on-primary:        #FFFFFF;
+  --primary-soft:      #F5E6DF;
+  --primary-soft-text: #7A3521;
+  --bg:           #F8F4F1;
+  --surface-2:    #F1EAE3;
+  --surface-alt:  #EDE3DA;
+  --text:         #271510;
+  --text-2:       #4B3328;
+  --muted:        #6E5244;
+  --faint:        #98786A;
+  --border:       #EAE0D6;
+  --border-strong:#DDD0C5;
+}
+
+/* ── Paleta Atardecer (modo oscuro) ──────────────────────── */
+.dark[data-palette="atardecer"] {
+  --primary:           #D4855C;
+  --primary-hover:     #E09472;
+  --on-primary:        #1A0800;
+  --primary-soft:      rgba(212,133,92,0.16);
+  --primary-soft-text: #F0B899;
+  --bg:           #150E0A;
+  --surface:      #1E1510;
+  --surface-2:    #281C16;
+  --surface-alt:  #241911;
+  --text:         #F3EBE5;
+  --text-2:       #D1BFB4;
+  --muted:        #A08070;
+  --faint:        #705848;
+  --border:       #332118;
+  --border-strong:#42281E;
+}
+
+/* ── Paleta Índigo (modo claro) ──────────────────────────── */
+:root[data-palette="indigo"] {
+  --primary:           #5048E5;
+  --primary-hover:     #4338CA;
+  --on-primary:        #FFFFFF;
+  --primary-soft:      #EEF2FF;
+  --primary-soft-text: #3730A3;
+  --bg:           #F5F5FA;
+  --surface-2:    #EDECF5;
+  --surface-alt:  #E9E8F2;
+  --text:         #16163E;
+  --text-2:       #38347A;
+  --muted:        #5F5B8A;
+  --faint:        #8A87B0;
+  --border:       #E2E0F0;
+  --border-strong:#D2CFEB;
+}
+
+/* ── Paleta Índigo (modo oscuro) ─────────────────────────── */
+.dark[data-palette="indigo"] {
+  --primary:           #7C73F0;
+  --primary-hover:     #9188F5;
+  --on-primary:        #06060C;
+  --primary-soft:      rgba(124,115,240,0.16);
+  --primary-soft-text: #B0A9F8;
+  --bg:           #0E0E1A;
+  --surface:      #14141F;
+  --surface-2:    #1C1C2A;
+  --surface-alt:  #181824;
+  --text:         #EEEEF8;
+  --text-2:       #C0BDE8;
+  --muted:        #8A87B0;
+  --faint:        #606080;
+  --border:       #252435;
+  --border-strong:#312F44;
+}
+
+/* ── Modo oscuro ─────────────────────────────────────────── */
+.dark {
+  --primary:           #3BA972;
+  --primary-hover:     #46B97F;
+  --on-primary:        #06140C;
+  --primary-soft:      rgba(59,169,114,0.16);
+  --primary-soft-text: #7FD3A7;
+
+  --bg:           #0D130F;
+  --surface:      #161E18;
+  --surface-2:    #1E2922;
+  --surface-alt:  #1A241D;
+  --text:         #ECF3EE;
+  --text-2:       #C3D1C8;
+  --muted:        #8FA398;
+  --faint:        #647469;
+  --border:       #26332C;
+  --border-strong:#324239;
+
+  --success:      #3FBE86;
+  --success-soft: rgba(63,190,134,0.16);
+  --danger:       #FF6B6F;
+  --danger-soft:  rgba(255,107,111,0.16);
+  --warning:      #F0B844;
+  --water:        #5AA0F0;
+
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.4);
+  --shadow-md: 0 6px 20px rgba(0,0,0,0.45);
+  --shadow-lg: 0 16px 48px rgba(0,0,0,0.55);
+}
+
+/* ── Integración con Tailwind v4 ─────────────────────────── */
+@theme inline {
+  --font-sans: var(--font);
+  --font-mono: var(--mono);
+
+  --color-primary:           var(--primary);
+  --color-primary-hover:     var(--primary-hover);
+  --color-on-primary:        var(--on-primary);
+  --color-primary-soft:      var(--primary-soft);
+  --color-primary-soft-text: var(--primary-soft-text);
+
+  --color-bg:           var(--bg);
+  --color-surface:      var(--surface);
+  --color-surface-2:    var(--surface-2);
+  --color-surface-alt:  var(--surface-alt);
+  --color-text:         var(--text);
+  --color-text-2:       var(--text-2);
+  --color-muted:        var(--muted);
+  --color-faint:        var(--faint);
+  --color-border:       var(--border);
+  --color-border-strong:var(--border-strong);
+
+  --color-success:      var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-danger:       var(--danger);
+  --color-danger-soft:  var(--danger-soft);
+  --color-warning:      var(--warning);
+  --color-water:        var(--water);
+}
+
+/* ── Base ────────────────────────────────────────────────── */
+body {
+  font-family: var(--font, -apple-system, system-ui, sans-serif);
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.mono { font-family: var(--mono, ui-monospace, monospace); }
+
+
+/* ══════════════════════════════════════════════════════════
+   FASE 2 — Componentes
+   ══════════════════════════════════════════════════════════ */
+
+/* ── Botones ─────────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 700;
+  border-radius: 14px;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  cursor: pointer;
+  border: none;
+  text-decoration: none;
+  transition: filter .15s, transform .1s, background .15s, opacity .15s;
+}
+.btn:active  { transform: scale(.97); }
+.btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+
+.btn-sm   { height: 38px; padding: 0 14px; font-size: 13.5px; border-radius: 11px; }
+.btn-md   { height: 46px; padding: 0 18px; font-size: 15px; }
+.btn-lg   { height: 54px; padding: 0 22px; font-size: 16px; border-radius: 16px; }
+.btn-full { width: 100%; }
+
+.btn-primary         { background: var(--primary);  color: var(--on-primary); }
+.btn-primary:hover   { background: var(--primary-hover); }
+.btn-success         { background: var(--success);  color: #fff; }
+.btn-success:hover   { filter: brightness(1.06); }
+.btn-soft            { background: var(--primary-soft); color: var(--primary-soft-text); }
+.btn-soft:hover      { filter: brightness(.97); }
+.btn-ghost           { background: var(--surface-2); color: var(--text); }
+.btn-ghost:hover     { background: var(--border); }
+.btn-danger          { background: var(--danger);   color: #fff; }
+.btn-danger:hover    { filter: brightness(1.06); }
+
+/* Botón icono circular */
+.iconbtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 99px;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  transition: background .15s, transform .1s;
+  color: var(--text-2);
+}
+.iconbtn:active           { transform: scale(.92); }
+.iconbtn-surface          { background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-sm); }
+.iconbtn-ghost            { background: transparent; color: var(--muted); }
+.iconbtn-ghost:hover      { background: var(--surface-2); }
+.iconbtn.is-active        { color: var(--primary); }
+
+/* ── Inputs y formularios ────────────────────────────────── */
+.input {
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: var(--surface-2);
+  border: 1.5px solid var(--border);
+  color: var(--text);
+  font-size: 15px;
+  font-family: var(--font, inherit);
+  outline: none;
+  transition: border-color .15s, background .15s;
+}
+.input:focus         { border-color: var(--primary); background: var(--surface); }
+.input::placeholder  { color: var(--faint); }
+.input.is-error      { border-color: var(--danger); }
+
+.label {
+  display: block;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-2);
+  margin-bottom: 8px;
+  letter-spacing: -0.01em;
+}
+.input-hint           { font-size: 12.5px; color: var(--muted); margin-top: 4px; }
+.input-hint.is-error  { color: var(--danger); }
+
+/* ── Chips ───────────────────────────────────────────────── */
+
+/* Chip de tipo de lugar — borde del color del tipo cuando activo */
+.type-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px 6px 6px;
+  border-radius: 99px;
+  background: var(--surface-2);
+  color: var(--text);
+  font-weight: 700;
+  font-size: 13.5px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  user-select: none;
+  transition: border-color .15s, background .15s;
+}
+.type-chip.is-on {
+  border-color: var(--tc, var(--primary));
+  background: var(--surface);
+}
+
+/* Chip de servicio — se tiñe de marca al activar */
+.svc-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 13px;
+  border-radius: 99px;
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-weight: 600;
+  font-size: 13.5px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  user-select: none;
+  transition: background .15s, color .15s;
+}
+.svc-chip.is-on {
+  background: var(--primary-soft);
+  color: var(--primary-soft-text);
+}
+
+/* Chip "glass" sobre imágenes (tipo / pernocta en la foto de la tarjeta) */
+.chip-glass {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 11px 0 5px;
+  border-radius: 99px;
+  background: rgba(255,255,255,.94);
+  color: #18271f;
+  font-size: 12px;
+  font-weight: 700;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+/* ── Switch ──────────────────────────────────────────────── */
+.switch {
+  width: 48px;
+  height: 28px;
+  border-radius: 99px;
+  background: var(--border-strong);
+  position: relative;
+  cursor: pointer;
+  border: none;
+  flex-shrink: 0;
+  transition: background .2s;
+}
+.switch.is-on { background: var(--primary); }
+.switch span {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 99px;
+  background: #fff;
+  transition: transform .2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,.2);
+  pointer-events: none;
+}
+.switch.is-on span { transform: translateX(20px); }
+
+/* ── Checkbox ────────────────────────────────────────────── */
+.cbox {
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  border: 2px solid var(--border-strong);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background .15s, border-color .15s;
+}
+.cbox.is-on {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+/* ── Badge (sobre botones de filtros, etc.) ──────────────── */
+.badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 19px;
+  height: 19px;
+  border-radius: 99px;
+  background: var(--primary);
+  color: var(--on-primary);
+  font-size: 11px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 5px;
+  border: 2px solid var(--surface);
+}
+
+/* ── Toggle de vista Mapa / Lista ────────────────────────── */
+.viewtoggle {
+  display: flex;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  padding: 4px;
+  box-shadow: var(--shadow-md);
+}
+.viewtoggle button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 99px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.viewtoggle button.is-on {
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+/* ── Toast de confirmación ───────────────────────────────── */
+.toast {
+  position: fixed;
+  bottom: 88px;
+  left: 50%;
+  transform: translateX(-50%) translateY(8px);
+  background: #18271f;
+  color: #ECF3EE;
+  padding: 12px 20px;
+  border-radius: 99px;
+  font-size: 14px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: var(--shadow-lg);
+  opacity: 0;
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 1000;
+  transition: opacity .2s, transform .2s;
+}
+.toast.is-visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ── Tarjeta de lugar (base) ─────────────────────────────── */
+.placecard {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  overflow: hidden;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow .15s, transform .12s;
+}
+.placecard:hover  { box-shadow: var(--shadow-md); }
+.placecard:active { transform: scale(.99); }
+
+/* ── Rail de escritorio ──────────────────────────────────── */
+.rail {
+  width: 92px;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  flex-shrink: 0;
+  display: none;
+}
+@media (min-width: 1024px) {
+  .rail { display: flex; }
+  .main-with-rail { padding-left: 92px; }
+}
+.rail-item {
+  width: 72px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 0;
+  border-radius: 14px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  transition: background .15s, color .15s;
+}
+.rail-item.is-active {
+  background: var(--primary-soft);
+  color: var(--primary-soft-text);
+}
+.deskcol {
+  width: 404px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--border);
+  display: none;
+}
+@media (min-width: 1024px) {
+  .deskcol { display: flex; }
+}
+
+.map-mobile-only {
+  display: flex;
+}
+@media (min-width: 1024px) {
+  .map-mobile-only { display: none !important; }
+}
+
+/* ── Tipografía de pantalla ──────────────────────────────── */
+.screen-title {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+.section-title {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+.place-name {
+  font-size: 16.5px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+.meta-text {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
 }

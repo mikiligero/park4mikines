@@ -1,8 +1,20 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Hanken_Grotesk, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
-const inter = Inter({ subsets: ["latin"] });
+const hankenGrotesk = Hanken_Grotesk({
+    subsets: ["latin"],
+    weight: ["400", "500", "600", "700", "800"],
+    variable: "--font",
+    display: "swap",
+});
+
+const jetBrainsMono = JetBrains_Mono({
+    subsets: ["latin"],
+    weight: ["500", "600"],
+    variable: "--mono",
+    display: "swap",
+});
 
 export const metadata: Metadata = {
     title: "Park4Mikines",
@@ -16,11 +28,11 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-    themeColor: "#4f46e5",
+    themeColor: "#1F7A52",
     width: "device-width",
     initialScale: 1,
     maximumScale: 1,
-    userScalable: false, // Typical for map apps
+    userScalable: false,
 };
 
 import LayoutWrapper from "@/components/LayoutWrapper";
@@ -33,7 +45,7 @@ export default function RootLayout({
 }>) {
     return (
         <html lang="es" suppressHydrationWarning>
-            <body className={inter.className}>
+            <body className={`${hankenGrotesk.variable} ${jetBrainsMono.variable}`}>
                 <ThemeProvider
                     attribute="class"
                     defaultTheme="system"
