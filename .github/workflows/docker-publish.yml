@@ -46,6 +46,14 @@ jobs:
       - name: Run unit tests
         run: npm run test -- --run
 
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Build Next.js app (smoke test)
+        run: npm run build
+        env:
+          DATABASE_URL: file:./app.db
+
       # Install the cosign tool except on PR
       # https://github.com/sigstore/cosign-installer
       - name: Install cosign
