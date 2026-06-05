@@ -48,51 +48,42 @@ fi
 # 2. Setup .env
 if [ ! -f .env ]; then
     echo -e "${BLUE}⚙️  Generating .env...${NC}"
-    echo "DATABASE_URL=file:/tmp/dev.db" > .env
-    
-    # Generate JWT Secret
     if command -v openssl &> /dev/null; then
         SECRET=$(openssl rand -hex 32)
     else
         SECRET="secret_$(date +%s)"
     fi
-    echo "JWT_SECRET=$SECRET" >> .env
+    echo "JWT_SECRET=$SECRET" > .env
 fi
 
 # 3. Permissions
 echo -e "${BLUE}🔧 Setting permissions...${NC}"
-chmod +x update.sh
+chmod +x update.sh 2>/dev/null || true
 
-# 4. Build & Launch
+# 4. Prepare filesystem
 echo -e "${BLUE}🚀 Ensuring database file exists...${NC}"
 mkdir -p prisma
 
-# If it exists as a directory, it must be removed to allow file creation
-if [ -d prisma/dev.db ]; then
-    echo "⚠️  Found directory at prisma/dev.db. Removing..."
-    rm -rf prisma/dev.db
+# If it exists as a directory, remove it to allow file creation
+if [ -d prisma/app.db ]; then
+    echo "⚠️  Found directory at prisma/app.db. Removing..."
+    rm -rf prisma/app.db
 fi
 
-if [ ! -f prisma/dev.db ]; then
-    echo "Creating empty database file to prevent Docker directory issue..."
-    touch prisma/dev.db
+if [ ! -f prisma/app.db ]; then
+    echo "Creating empty database file..."
+    touch prisma/app.db
 fi
 
-# Ensure the database file is writable by the container user (UID 1001)
-chmod 666 prisma/dev.db
+# Writable by container user (UID 1001)
+chmod 666 prisma/app.db
 
-# Ensure uploads directory exists and is writable
-echo "Ensure uploads directory exists..."
 mkdir -p public/uploads
 chmod 777 public/uploads
 
 echo -e "${BLUE}🚀 Pulling and starting containers...${NC}"
 docker compose pull
 docker compose up -d --remove-orphans
-
-echo -e "${BLUE}📦 Applying database migrations...${NC}"
-# Use global prisma binary (baked into Dockerfile)
-docker exec park4mikines prisma migrate deploy
 
 echo -e "${GREEN}✅ Deployment complete!${NC}"
 echo -e "${GREEN}🌍 App running at http://$(hostname -I | awk '{print $1}'):3000${NC}"

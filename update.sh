@@ -14,15 +14,15 @@ git fetch origin
 git reset --hard origin/main
 
 # 2. Database Backup (Safety First)
-if [ -f "prisma/dev.db" ]; then
+if [ -f "prisma/app.db" ]; then
     echo -e "${BLUE}💾 Backing up database...${NC}"
     mkdir -p backups
-    cp prisma/dev.db "backups/dev_$(date +%Y%m%d_%H%M%S).db"
+    cp prisma/app.db "backups/app_$(date +%Y%m%d_%H%M%S).db"
 fi
 
-# 3. Rebuild Containers
-echo -e "${BLUE}🏗️  Rebuilding containers...${NC}"
-docker compose down
-docker compose up -d --build --remove-orphans
+# 3. Pull new image and restart
+echo -e "${BLUE}🏗️  Pulling new image and restarting...${NC}"
+docker compose pull
+docker compose up -d --remove-orphans
 
 echo -e "${GREEN}✅ Update complete!${NC}"
