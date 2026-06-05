@@ -43,9 +43,9 @@ export function coverPhoto(images?: { url: string }[]): string {
 // Service name → Icon name mapping
 const SERVICE_ICON_MAP: [string, IconName][] = [
   ["agua potable",             "faucet"],
-  ["agua",                     "faucet"],
   ["aguas grises",             "greywater"],
   ["aguas negras",             "toilet"],
+  ["agua",                     "faucet"],
   ["basura",                   "trash"],
   ["baños",                    "restroom"],
   ["baño",                     "restroom"],
