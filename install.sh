@@ -15,7 +15,8 @@ else
     if [ -d "$TARGET_DIR" ]; then
         echo "⚠️  Directory '$TARGET_DIR' already exists. Updating..."
         cd "$TARGET_DIR"
-        git pull origin main
+        git fetch origin
+        git reset --hard origin/main
     else
         echo "⬇️  Cloning repository into './$TARGET_DIR'..."
         git clone "$REPO_URL" "$TARGET_DIR"
