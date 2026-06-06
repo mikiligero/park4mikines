@@ -207,6 +207,18 @@ export default function SpotDetail({ spot, onClose, onEdit }: SpotDetailProps) {
                                 <Icon name="edit" size={22} style={{ color: "var(--text-2)" }} />
                                 <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)" }}>Editar</span>
                             </button>
+                            {/* Borrar */}
+                            <button
+                                onClick={async () => {
+                                    if (!confirm(`¿Borrar "${spot.title}"? Esta acción no se puede deshacer.`)) return;
+                                    await deleteSpot(spot.id);
+                                    onClose();
+                                }}
+                                style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5, background: "none", border: "none", cursor: "pointer" }}
+                            >
+                                <Icon name="trash" size={22} style={{ color: "var(--danger)" }} />
+                                <span style={{ fontSize: 11, fontWeight: 700, color: "var(--danger)" }}>Borrar</span>
+                            </button>
                             {/* Compartir */}
                             <button
                                 onClick={() => navigator.share?.({ title: spot.title, url: window.location.href }).catch(() => {})}
