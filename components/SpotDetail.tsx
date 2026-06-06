@@ -219,14 +219,6 @@ export default function SpotDetail({ spot, onClose, onEdit }: SpotDetailProps) {
                                 <Icon name="trash" size={22} style={{ color: "var(--danger)" }} />
                                 <span style={{ fontSize: 11, fontWeight: 700, color: "var(--danger)" }}>Borrar</span>
                             </button>
-                            {/* Compartir */}
-                            <button
-                                onClick={() => navigator.share?.({ title: spot.title, url: window.location.href }).catch(() => {})}
-                                style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5, background: "none", border: "none", cursor: "pointer" }}
-                            >
-                                <Icon name="share" size={22} style={{ color: "var(--text-2)" }} />
-                                <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)" }}>Compartir</span>
-                            </button>
                         </div>
 
                         {/* Stats: precio · plazas · añadido */}
@@ -322,31 +314,6 @@ export default function SpotDetail({ spot, onClose, onEdit }: SpotDetailProps) {
                             </div>
                         </a>
 
-                        {/* Reseñas */}
-                        <div>
-                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-                                <p style={{ fontSize: 13, fontWeight: 700, color: "var(--text-2)", textTransform: "uppercase", letterSpacing: "0.06em", margin: 0 }}>
-                                    Reseñas
-                                </p>
-                                {spot.rating > 0 && (
-                                    <span style={{ fontSize: 13, fontWeight: 700, color: "var(--warning)" }}>
-                                        ★ {spot.rating.toFixed(1)} / 5
-                                    </span>
-                                )}
-                            </div>
-                            <button
-                                onClick={() => onEdit?.(spot)}
-                                style={{
-                                    width: "100%", padding: "12px 0", borderRadius: 14,
-                                    border: "1.5px solid var(--border)", background: "var(--surface-2)",
-                                    display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                                    fontSize: 14, fontWeight: 700, color: "var(--muted)", cursor: "pointer",
-                                }}
-                            >
-                                <Icon name="star" size={16} />
-                                Escribir una reseña
-                            </button>
-                        </div>
                     </div>
                 </div>
             </div>
