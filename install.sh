@@ -72,8 +72,13 @@ if [ -d prisma/app.db ]; then
 fi
 
 if [ ! -f prisma/app.db ]; then
-    echo "Creating empty database file..."
-    touch prisma/app.db
+    if [ -f prisma/dev.db ]; then
+        echo "📦 Migrating existing database from dev.db to app.db..."
+        cp prisma/dev.db prisma/app.db
+    else
+        echo "Creating empty database file..."
+        touch prisma/app.db
+    fi
 fi
 
 # Writable by container user (UID 1001)
