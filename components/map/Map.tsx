@@ -335,7 +335,6 @@ function MapContent({ spots, pernoctas = [] }: { spots: any[]; pernoctas?: any[]
   const [showSearchResults, setShowSearchResults]   = useState(false);
   const [isLocating, setIsLocating]                 = useState(false);
   const [userPosition, setUserPosition]             = useState<[number, number] | null>(null);
-  const [listFilter, setListFilter]                 = useState("");
   const [viewMode, setViewMode]                     = useState<"map" | "list">("map");
   const [bounds, setBounds]                         = useState<L.LatLngBounds | null>(null);
 
@@ -448,10 +447,6 @@ function MapContent({ spots, pernoctas = [] }: { spots: any[]; pernoctas?: any[]
     .filter(spot => !bounds || bounds.contains([spot.latitude, spot.longitude]))
     .sort((a, b) => ((a._distanceKm ?? Infinity) - (b._distanceKm ?? Infinity)));
 
-  const listSpots = listFilter.trim()
-    ? visibleSpots.filter(s => s.title.toLowerCase().includes(listFilter.toLowerCase()))
-    : visibleSpots;
-
   const activeFilterCount =
     selectedCategories.length + selectedServices.length +
     (showFavoritesOnly ? 1 : 0) + (minRating > 0 ? 1 : 0) +
@@ -492,33 +487,84 @@ function MapContent({ spots, pernoctas = [] }: { spots: any[]; pernoctas?: any[]
     );
   }
 
-  // ── Buscador reutilizable (render fn, no component) ──────────────────────
+  // ── Buscador unificado (mis sitios + Nominatim) ───────────────────────────
+  const spotMatches = searchQuery.trim().length > 1
+    ? spots.filter(s => s.title.toLowerCase().includes(searchQuery.toLowerCase())).slice(0, 4)
+    : [];
+  const showDropdown = showSearchResults && (spotMatches.length > 0 || searchResults.length > 0);
+
+  const handleSelectSpot = (spot: any) => {
+    ignoreSearchRef.current = true;
+    setSearchQuery(spot.title);
+    setShowSearchResults(false);
+    setSearchResults([]);
+    setInitialPosition([spot.latitude, spot.longitude]);
+    setSelectedSpot(spot);
+  };
+
   const renderSearchInput = (width: number) => (
     <div style={{ position: "relative", zIndex: 1600, width: width || undefined, flex: width ? undefined : 1 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--surface)", borderRadius: 14, border: "1px solid var(--border)", boxShadow: "var(--shadow-sm)", padding: "0 12px", height: 42 }}>
         <Icon name="search" size={16} style={{ color: "var(--faint)", flexShrink: 0 }} />
         <input
-          type="text" placeholder="Buscar lugar o ciudad…"
+          type="text" placeholder="Buscar mis sitios o ciudad…"
           style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontSize: 14, color: "var(--text)", fontFamily: "var(--font)", minWidth: 0 }}
           value={searchQuery}
-          onChange={e => setSearchQuery(e.target.value)}
-          onFocus={() => { if (searchResults.length > 0) setShowSearchResults(true); }}
-          onKeyDown={e => { if (e.key === "Enter" && searchResults.length > 0) { const r = searchResults[0]; handleSelectLocation(r.lat, r.lon, r.display_name); } }}
+          onChange={e => { setSearchQuery(e.target.value); setShowSearchResults(true); }}
+          onFocus={() => { if (spotMatches.length > 0 || searchResults.length > 0) setShowSearchResults(true); }}
+          onKeyDown={e => { if (e.key === "Enter") { if (spotMatches.length > 0) handleSelectSpot(spotMatches[0]); else if (searchResults.length > 0) { const r = searchResults[0]; handleSelectLocation(r.lat, r.lon, r.display_name); } } }}
         />
         {isSearching && <div style={{ width: 14, height: 14, borderRadius: "50%", border: "2px solid var(--border)", borderTopColor: "var(--primary)", animation: "spin .7s linear infinite", flexShrink: 0 }} />}
+        {searchQuery && !isSearching && (
+          <button onClick={() => { setSearchQuery(""); setSearchResults([]); setShowSearchResults(false); }} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, lineHeight: 0, color: "var(--muted)" }}>
+            <Icon name="close" size={14} />
+          </button>
+        )}
       </div>
-      {showSearchResults && searchResults.length > 0 && (
+      {showDropdown && (
         <div style={{ position: "absolute", top: 48, left: 0, right: 0, background: "var(--surface)", borderRadius: 14, border: "1px solid var(--border)", boxShadow: "var(--shadow-md)", overflow: "hidden", zIndex: 3000 }}>
-          {searchResults.map((r: any, i: number) => (
-            <button key={i} style={{ width: "100%", textAlign: "left", padding: "10px 14px", display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--text)", background: "transparent", border: "none", borderBottom: i < searchResults.length - 1 ? "1px solid var(--border)" : "none", cursor: "pointer", fontFamily: "var(--font)" }}
-              onMouseEnter={e => (e.currentTarget.style.background = "var(--surface-2)")}
-              onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
-              onClick={() => handleSelectLocation(r.lat, r.lon, r.display_name)}
-            >
-              <Icon name="pin" size={14} style={{ color: "var(--muted)", flexShrink: 0 }} />
-              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.display_name}</span>
-            </button>
-          ))}
+          {/* Mis sitios */}
+          {spotMatches.length > 0 && (
+            <>
+              <div style={{ padding: "6px 14px 4px", fontSize: 10, fontWeight: 800, color: "var(--faint)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                Mis sitios
+              </div>
+              {spotMatches.map((s: any) => {
+                const type = getPlaceType(s.category);
+                return (
+                  <button key={s.id} style={{ width: "100%", textAlign: "left", padding: "8px 14px", display: "flex", alignItems: "center", gap: 10, fontSize: 13, color: "var(--text)", background: "transparent", border: "none", borderBottom: "1px solid var(--border)", cursor: "pointer", fontFamily: "var(--font)" }}
+                    onMouseEnter={e => (e.currentTarget.style.background = "var(--surface-2)")}
+                    onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+                    onClick={() => handleSelectSpot(s)}
+                  >
+                    <div style={{ width: 24, height: 24, borderRadius: 99, background: type.color, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <Icon name={type.icon} size={12} style={{ color: "#fff" }} />
+                    </div>
+                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{s.title}</span>
+                    <span style={{ fontSize: 11, color: "var(--faint)", flexShrink: 0 }}>{type.short}</span>
+                  </button>
+                );
+              })}
+            </>
+          )}
+          {/* Nominatim */}
+          {searchResults.length > 0 && (
+            <>
+              <div style={{ padding: "6px 14px 4px", fontSize: 10, fontWeight: 800, color: "var(--faint)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                Lugares
+              </div>
+              {searchResults.map((r: any, i: number) => (
+                <button key={i} style={{ width: "100%", textAlign: "left", padding: "8px 14px", display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--text)", background: "transparent", border: "none", borderBottom: i < searchResults.length - 1 ? "1px solid var(--border)" : "none", cursor: "pointer", fontFamily: "var(--font)" }}
+                  onMouseEnter={e => (e.currentTarget.style.background = "var(--surface-2)")}
+                  onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+                  onClick={() => handleSelectLocation(r.lat, r.lon, r.display_name)}
+                >
+                  <Icon name="pin" size={14} style={{ color: "var(--muted)", flexShrink: 0 }} />
+                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.display_name}</span>
+                </button>
+              ))}
+            </>
+          )}
         </div>
       )}
     </div>
@@ -546,41 +592,19 @@ function MapContent({ spots, pernoctas = [] }: { spots: any[]; pernoctas?: any[]
           </div>
         </div>
 
-        {/* Buscador geocodificación */}
+        {/* Buscador */}
         <div style={{ padding: "10px 16px", borderBottom: "1px solid var(--border)", flexShrink: 0, background: "var(--surface)" }}>
           {renderSearchInput(372)}
         </div>
 
-        {/* Filtro por nombre */}
-        <div style={{ padding: "8px 12px", borderBottom: "1px solid var(--border)", flexShrink: 0, background: "var(--surface)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--surface-2)", borderRadius: 10, padding: "6px 10px" }}>
-            <Icon name="filter" size={13} style={{ color: "var(--faint)", flexShrink: 0 }} />
-            <input
-              type="text"
-              placeholder="Filtrar por nombre…"
-              value={listFilter}
-              onChange={e => setListFilter(e.target.value)}
-              style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontSize: 13, color: "var(--text)", fontFamily: "var(--font)" }}
-            />
-            {listFilter && (
-              <button onClick={() => setListFilter("")} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, lineHeight: 0, color: "var(--muted)" }}>
-                <Icon name="close" size={13} />
-              </button>
-            )}
-          </div>
-        </div>
-
         {/* Contador */}
         <div style={{ padding: "8px 20px 4px", fontSize: 13, fontWeight: 600, color: "var(--muted)", flexShrink: 0, background: "var(--surface)" }}>
-          {listSpots.length} lugar{listSpots.length !== 1 ? "es" : ""}
-          {listFilter && visibleSpots.length !== listSpots.length && (
-            <span style={{ color: "var(--faint)", fontWeight: 400 }}> de {visibleSpots.length}</span>
-          )}
+          {visibleSpots.length} lugar{visibleSpots.length !== 1 ? "es" : ""}
         </div>
 
         {/* Lista de lugares */}
         <div style={{ flex: 1, overflowY: "auto", background: "var(--bg)" }}>
-          <SpotList spots={listSpots} onSpotClick={s => setSelectedSpot(s)} />
+          <SpotList spots={visibleSpots} onSpotClick={s => setSelectedSpot(s)} />
         </div>
       </div>
 
