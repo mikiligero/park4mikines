@@ -335,6 +335,7 @@ function MapContent({ spots, pernoctas = [] }: { spots: any[]; pernoctas?: any[]
   const [showSearchResults, setShowSearchResults]   = useState(false);
   const [isLocating, setIsLocating]                 = useState(false);
   const [userPosition, setUserPosition]             = useState<[number, number] | null>(null);
+  const [listFilter, setListFilter]                 = useState("");
   const [viewMode, setViewMode]                     = useState<"map" | "list">("map");
   const [bounds, setBounds]                         = useState<L.LatLngBounds | null>(null);
 
@@ -447,6 +448,10 @@ function MapContent({ spots, pernoctas = [] }: { spots: any[]; pernoctas?: any[]
     .filter(spot => !bounds || bounds.contains([spot.latitude, spot.longitude]))
     .sort((a, b) => ((a._distanceKm ?? Infinity) - (b._distanceKm ?? Infinity)));
 
+  const listSpots = listFilter.trim()
+    ? visibleSpots.filter(s => s.title.toLowerCase().includes(listFilter.toLowerCase()))
+    : visibleSpots;
+
   const activeFilterCount =
     selectedCategories.length + selectedServices.length +
     (showFavoritesOnly ? 1 : 0) + (minRating > 0 ? 1 : 0) +
@@ -541,19 +546,41 @@ function MapContent({ spots, pernoctas = [] }: { spots: any[]; pernoctas?: any[]
           </div>
         </div>
 
-        {/* Buscador */}
+        {/* Buscador geocodificación */}
         <div style={{ padding: "10px 16px", borderBottom: "1px solid var(--border)", flexShrink: 0, background: "var(--surface)" }}>
           {renderSearchInput(372)}
         </div>
 
+        {/* Filtro por nombre */}
+        <div style={{ padding: "8px 12px", borderBottom: "1px solid var(--border)", flexShrink: 0, background: "var(--surface)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--surface-2)", borderRadius: 10, padding: "6px 10px" }}>
+            <Icon name="filter" size={13} style={{ color: "var(--faint)", flexShrink: 0 }} />
+            <input
+              type="text"
+              placeholder="Filtrar por nombre…"
+              value={listFilter}
+              onChange={e => setListFilter(e.target.value)}
+              style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontSize: 13, color: "var(--text)", fontFamily: "var(--font)" }}
+            />
+            {listFilter && (
+              <button onClick={() => setListFilter("")} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, lineHeight: 0, color: "var(--muted)" }}>
+                <Icon name="close" size={13} />
+              </button>
+            )}
+          </div>
+        </div>
+
         {/* Contador */}
         <div style={{ padding: "8px 20px 4px", fontSize: 13, fontWeight: 600, color: "var(--muted)", flexShrink: 0, background: "var(--surface)" }}>
-          {visibleSpots.length} lugar{visibleSpots.length !== 1 ? "es" : ""}
+          {listSpots.length} lugar{listSpots.length !== 1 ? "es" : ""}
+          {listFilter && visibleSpots.length !== listSpots.length && (
+            <span style={{ color: "var(--faint)", fontWeight: 400 }}> de {visibleSpots.length}</span>
+          )}
         </div>
 
         {/* Lista de lugares */}
         <div style={{ flex: 1, overflowY: "auto", background: "var(--bg)" }}>
-          <SpotList spots={visibleSpots} onSpotClick={s => setSelectedSpot(s)} />
+          <SpotList spots={listSpots} onSpotClick={s => setSelectedSpot(s)} />
         </div>
       </div>
 
