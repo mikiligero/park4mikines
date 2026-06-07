@@ -499,7 +499,8 @@ function MapContent({ spots, pernoctas = [] }: { spots: any[]; pernoctas?: any[]
     setShowSearchResults(false);
     setSearchResults([]);
     setInitialPosition([spot.latitude, spot.longitude]);
-    setSelectedSpot(spot);
+    setSelectedSpot(null);
+    setPeekSpot(spot);
   };
 
   const renderSearchInput = (width: number) => (
