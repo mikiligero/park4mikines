@@ -25,8 +25,11 @@ interface NavItem {
 
 export default function Sidebar() {
     const [lists, setLists] = useState<any[]>([]);
+    const [mounted, setMounted] = useState(false);
     const pathname = usePathname();
     const { resolvedTheme, setTheme } = useTheme();
+
+    useEffect(() => { setMounted(true); }, []);
 
     useEffect(() => {
         const fetch = () => getVisibleLists().then(setLists);
@@ -96,10 +99,10 @@ export default function Sidebar() {
                     onClick={() => setTheme(isDark ? "light" : "dark")}
                     className="rail-item"
                     style={{ border: "none", cursor: "pointer", background: "transparent" }}
-                    title={isDark ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
+                    title={mounted ? (isDark ? "Cambiar a modo claro" : "Cambiar a modo oscuro") : ""}
                 >
-                    <Icon name={isDark ? "sun" : "moon"} size={20} />
-                    <span>{isDark ? "Claro" : "Oscuro"}</span>
+                    <Icon name={mounted ? (isDark ? "sun" : "moon") : "moon"} size={20} />
+                    <span>{mounted ? (isDark ? "Claro" : "Oscuro") : "Oscuro"}</span>
                 </button>
 
                 {/* FAB + */}
