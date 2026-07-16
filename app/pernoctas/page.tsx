@@ -11,7 +11,7 @@ export default async function PernocatasPage() {
 
     const userId = session.userId as number;
 
-    const [pernoctas, spots] = await Promise.all([
+    const [pernoctas, spots, user] = await Promise.all([
         prisma.pernocta.findMany({
             where: { userId },
             orderBy: { date: "desc" },
@@ -22,6 +22,10 @@ export default async function PernocatasPage() {
             select: { id: true, title: true },
             orderBy: { title: "asc" },
         }),
+        prisma.user.findUnique({
+            where: { id: userId },
+            select: { camperPurchasePrice: true },
+        }),
     ]);
 
     // Serialize dates for client component
@@ -31,5 +35,5 @@ export default async function PernocatasPage() {
         createdAt: p.createdAt.toISOString(),
     }));
 
-    return <PernocatasClient pernoctas={serialized} spots={spots} />;
+    return <PernocatasClient pernoctas={serialized} spots={spots} camperPurchasePrice={user?.camperPurchasePrice ?? 0} />;
 }

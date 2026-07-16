@@ -31,6 +31,10 @@ function formatShortDate(dateStr: string) {
     });
 }
 
+function formatEuro(value: number) {
+    return `${value.toLocaleString("es-ES", { maximumFractionDigits: 2 })}€`;
+}
+
 function StatCard({ label, value, icon, color }: {
     label: string; value: string | number;
     icon: Parameters<typeof Icon>[0]["name"]; color: string;
@@ -59,7 +63,7 @@ function StatCard({ label, value, icon, color }: {
     );
 }
 
-export default function PernocatasClient({ pernoctas, spots }: { pernoctas: Pernocta[]; spots: Spot[] }) {
+export default function PernocatasClient({ pernoctas, spots, camperPurchasePrice }: { pernoctas: Pernocta[]; spots: Spot[]; camperPurchasePrice: number }) {
     const [showAdd, setShowAdd] = useState(false);
     const [editTarget, setEditTarget] = useState<Pernocta | null>(null);
     const [isPending, startTransition] = useTransition();
@@ -75,6 +79,7 @@ export default function PernocatasClient({ pernoctas, spots }: { pernoctas: Pern
     const thisYear    = pernoctas.filter(p => new Date(p.date).getFullYear() === currentYear).length;
     const totalCost   = pernoctas.reduce((s, p) => s + (p.cost ?? 0), 0);
     const avgCost     = total > 0 ? Math.round(totalCost / total) : 0;
+    const camperCostPerNight = total > 0 ? camperPurchasePrice / total : 0;
     const freeNights  = pernoctas.filter(p => !p.cost || p.cost === 0).length;
     const freePercent = total > 0 ? Math.round((freeNights / total) * 100) : 0;
 
@@ -145,9 +150,9 @@ export default function PernocatasClient({ pernoctas, spots }: { pernoctas: Pern
 
                 {/* Stats 3×2 */}
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
-                    <StatCard label="Noches"        value={total}                        icon="moon"     color="var(--primary)" />
+                    <StatCard label="Camper / noche" value={formatEuro(camperCostPerNight)} icon="camper"   color="var(--primary)" />
                     <StatCard label={`En ${currentYear}`} value={thisYear}               icon="calendar" color="#4F46E5" />
-                    <StatCard label="Coste total"   value={`${totalCost.toFixed(0)}€`}  icon="euro"     color="var(--primary)" />
+                    <StatCard label="Coste total"   value={formatEuro(totalCost)}        icon="euro"     color="var(--primary)" />
                     <StatCard label="Media / noche" value={`${avgCost}€`}                icon="chart"    color="var(--warning)" />
                     <StatCard label="Provincias"    value={uniqueProvinces}               icon="pin"      color="var(--danger)" />
                     <StatCard label="Países"        value={uniqueCountries}               icon="globe"    color="var(--water)" />

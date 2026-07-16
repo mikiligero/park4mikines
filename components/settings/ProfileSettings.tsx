@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Icon } from "@/components/Icon";
-import { updateProfile, changePassword } from "@/lib/actions";
+import { updateProfile, updateCamperPurchasePrice, changePassword } from "@/lib/actions";
 
 function Msg({ type, text }: { type: "success" | "error"; text: string }) {
     return (
@@ -20,11 +20,14 @@ function Msg({ type, text }: { type: "success" | "error"; text: string }) {
 
 export default function ProfileSettings({ user }: { user: any }) {
     const [loadingProfile, setLoadingProfile]   = useState(false);
+    const [loadingCamper, setLoadingCamper]     = useState(false);
     const [loadingPassword, setLoadingPassword] = useState(false);
     const [profileMsg, setProfileMsg]           = useState<{ type: "success" | "error"; text: string } | null>(null);
+    const [camperMsg, setCamperMsg]             = useState<{ type: "success" | "error"; text: string } | null>(null);
     const [passMsg, setPassMsg]                 = useState<{ type: "success" | "error"; text: string } | null>(null);
 
     const [profileData, setProfileData] = useState({ name: user?.name || "", username: user?.username || "" });
+    const [camperPurchasePrice, setCamperPurchasePrice] = useState(String(user?.camperPurchasePrice ?? 0));
     const [passData, setPassData]       = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
 
     const handleProfileSubmit = async (e: React.FormEvent) => {
@@ -43,6 +46,24 @@ export default function ProfileSettings({ user }: { user: any }) {
             setProfileMsg({ type: "error", text: "Error al actualizar perfil." });
         } finally {
             setLoadingProfile(false);
+        }
+    };
+
+    const handleCamperSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoadingCamper(true);
+        setCamperMsg(null);
+        const fd = new FormData();
+        fd.append("camperPurchasePrice", camperPurchasePrice);
+        try {
+            const res = await updateCamperPurchasePrice(fd);
+            setCamperMsg(res.success
+                ? { type: "success", text: "Importe de la camper guardado." }
+                : { type: "error",   text: res.error as string });
+        } catch {
+            setCamperMsg({ type: "error", text: "Error al guardar el importe." });
+        } finally {
+            setLoadingCamper(false);
         }
     };
 
@@ -107,6 +128,33 @@ export default function ProfileSettings({ user }: { user: any }) {
                         Guardar cambios
                     </button>
                     {profileMsg && <Msg {...profileMsg} />}
+                </form>
+            </section>
+
+            {/* ── Camper ── */}
+            <section style={{ background: "var(--surface)", borderRadius: 20, padding: "20px 20px", border: "1px solid var(--border)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                    <Icon name="camper" size={19} style={{ color: "var(--primary)" }} />
+                    <h2 style={{ fontSize: 16, fontWeight: 800, letterSpacing: "-0.02em", color: "var(--text)", margin: 0 }}>
+                        Camper
+                    </h2>
+                </div>
+                <p style={{ fontSize: 13, color: "var(--muted)", marginBottom: 18 }}>Guarda el importe total pagado para calcular el coste por noche.</p>
+
+                <form onSubmit={handleCamperSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                    <div>
+                        <label className="label" htmlFor="p-camper-price">Importe total pagado</label>
+                        <input
+                            id="p-camper-price" type="number" min="0" step="0.01" inputMode="decimal" className="input"
+                            value={camperPurchasePrice}
+                            onChange={e => setCamperPurchasePrice(e.target.value)}
+                        />
+                    </div>
+                    <button type="submit" disabled={loadingCamper} className="btn btn-primary btn-md" style={{ alignSelf: "flex-start", gap: 8 }}>
+                        <Icon name="save" size={16} style={{ animation: loadingCamper ? "spin .8s linear infinite" : "none" }} />
+                        Guardar importe
+                    </button>
+                    {camperMsg && <Msg {...camperMsg} />}
                 </form>
             </section>
 

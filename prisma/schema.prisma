@@ -19,6 +19,7 @@ model User {
   password  String
   name      String?
   role      String   @default("USER") // Was Role
+  camperPurchasePrice Float @default(0)
   createdAt DateTime @default(now())
   
   spots               Spot[]

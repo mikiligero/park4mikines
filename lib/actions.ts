@@ -408,6 +408,31 @@ export async function updateProfile(formData: FormData) {
     }
 }
 
+export async function updateCamperPurchasePrice(formData: FormData) {
+    const session = await getSession();
+    if (!session || !session.userId) return { success: false, error: "Unauthorized" };
+
+    const rawPrice = String(formData.get("camperPurchasePrice") ?? "").replace(",", ".").trim();
+    const camperPurchasePrice = rawPrice === "" ? 0 : Number(rawPrice);
+
+    if (!Number.isFinite(camperPurchasePrice) || camperPurchasePrice < 0) {
+        return { success: false, error: "Introduce un importe válido" };
+    }
+
+    try {
+        await prisma.user.update({
+            where: { id: session.userId as number },
+            data: { camperPurchasePrice }
+        });
+        revalidatePath("/settings");
+        revalidatePath("/pernoctas");
+        return { success: true };
+    } catch (error) {
+        logger.error("Update camper purchase price error", { error });
+        return { success: false, error: "Error al guardar el importe" };
+    }
+}
+
 export async function changePassword(formData: FormData) {
     const session = await getSession();
     if (!session || !session.userId) return { success: false, error: "Unauthorized" };

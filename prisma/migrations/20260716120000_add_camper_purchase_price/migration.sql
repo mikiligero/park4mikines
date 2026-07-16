@@ -1,0 +1,1 @@
+ALTER TABLE "User" ADD COLUMN "camperPurchasePrice" REAL NOT NULL DEFAULT 0;
