@@ -8,7 +8,7 @@ import Cropper from "react-easy-crop";
 import getCroppedImg from "@/lib/cropImage";
 import { createSpot, updateSpot } from "@/lib/actions";
 import { getGPSFromImage } from "@/lib/exif";
-import { Icon } from "@/components/Icon";
+import { Icon, type IconName } from "@/components/Icon";
 import { PLACE_TYPES, SPOT_SERVICES } from "@/lib/placeTypes";
 
 const LocationPickerMap = dynamic(() => import("./LocationPickerMap"), {
