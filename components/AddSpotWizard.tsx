@@ -8,8 +8,8 @@ import Cropper from "react-easy-crop";
 import getCroppedImg from "@/lib/cropImage";
 import { createSpot, updateSpot } from "@/lib/actions";
 import { getGPSFromImage } from "@/lib/exif";
-import { Icon, type IconName } from "@/components/Icon";
-import { PLACE_TYPES } from "@/lib/placeTypes";
+import { Icon } from "@/components/Icon";
+import { PLACE_TYPES, SPOT_SERVICES } from "@/lib/placeTypes";
 
 const LocationPickerMap = dynamic(() => import("./LocationPickerMap"), {
     ssr: false,
@@ -46,25 +46,6 @@ function parseLatLng(raw: string): { lat: number; lng: number } | null {
     }
     return null;
 }
-
-// ── Services list (labels must match DB) ─────────────────────────────────────
-
-const SERVICES_LIST: { label: string; icon: IconName }[] = [
-    { label: "Agua potable",               icon: "faucet" },
-    { label: "Aguas negras",               icon: "toilet" },
-    { label: "Aguas grises",               icon: "greywater" },
-    { label: "Cubo de basura",             icon: "trash" },
-    { label: "Baños públicos",             icon: "restroom" },
-    { label: "Duchas (acceso posible)",    icon: "shower" },
-    { label: "Electricidad (acceso posible)", icon: "plug" },
-    { label: "WIFI",                       icon: "wifi" },
-    { label: "Cobertura 5G",              icon: "signal" },
-    { label: "Piscina",                    icon: "pool" },
-    { label: "Lavandería",                 icon: "laundry" },
-    { label: "Lavado de autocaravanas",    icon: "camperwash" },
-    { label: "Se permiten mascotas",       icon: "pet" },
-    { label: "Panadería",                  icon: "bread" },
-];
 
 const TYPE_LIST = Object.values(PLACE_TYPES);
 
@@ -680,7 +661,7 @@ export default function AddSpotWizard({ spot, onCancel, initialPhoto, initialLat
             <div>
                 <label className="label">Servicios disponibles</label>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                    {SERVICES_LIST.map(srv => {
+                    {SPOT_SERVICES.map(srv => {
                         const active = formData.services.includes(srv.label);
                         return (
                             <button

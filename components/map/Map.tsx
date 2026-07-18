@@ -11,7 +11,7 @@ import { Icon } from "@/components/Icon";
 import AddSpotWizard from "../AddSpotWizard";
 import SpotList from "../SpotList";
 import SpotDetail from "../SpotDetail";
-import { getPlaceType } from "@/lib/placeTypes";
+import { getPlaceType, SPOT_SERVICES } from "@/lib/placeTypes";
 
 // ── Marker icon SVG paths (plain HTML strings for Leaflet divIcon) ────────────
 const MARKER_SVG: Record<string, string> = {
@@ -461,22 +461,6 @@ function MapContent({ spots, pernoctas = [] }: { spots: any[]; pernoctas?: any[]
     "NATURE", "PARKING_DN", "REST_AREA", "PICNIC",
     "AC_FREE", "AC_PAID", "OFFROAD", "CAMPING", "SERVICE", "PARKING_DAY", "CANDIDATO",
   ];
-  const servicesList = [
-    { id: "water",      label: "Agua potable" },
-    { id: "blackwater", label: "Aguas negras" },
-    { id: "greywater",  label: "Aguas grises" },
-    { id: "trash",      label: "Cubo de basura" },
-    { id: "toilets",    label: "Baños públicos" },
-    { id: "showers",    label: "Duchas" },
-    { id: "electricity",label: "Electricidad" },
-    { id: "wifi",       label: "WIFI" },
-    { id: "pool",       label: "Piscina" },
-    { id: "laundry",    label: "Lavandería" },
-    { id: "carwash",    label: "Lavado de autocaravanas" },
-    { id: "bakery",     label: "Panadería" },
-    { id: "5g",         label: "Cobertura 5G" },
-  ];
-
   if (!initialPosition) {
     return (
       <div style={{ height: "100vh", width: "100%", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 16, background: "var(--bg)" }}>
@@ -820,7 +804,7 @@ function MapContent({ spots, pernoctas = [] }: { spots: any[]; pernoctas?: any[]
               <div>
                 <p className="label" style={{ marginBottom: 12 }}>Servicios</p>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                  {servicesList.map(srv => {
+                  {SPOT_SERVICES.map(srv => {
                     const active = selectedServices.includes(srv.label);
                     return (
                       <button
@@ -828,7 +812,7 @@ function MapContent({ spots, pernoctas = [] }: { spots: any[]; pernoctas?: any[]
                         className={`svc-chip ${active ? "is-on" : ""}`}
                         onClick={() => toggleFilter(selectedServices, srv.label, setSelectedServices)}
                       >
-                        {srv.label}
+                        {srv.filterLabel ?? srv.label}
                       </button>
                     );
                   })}

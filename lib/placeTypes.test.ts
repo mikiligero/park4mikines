@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getPlaceType, getSpotStatus, coverPhoto, getServiceIcon, DEFAULT_PHOTO } from './placeTypes';
+import { getPlaceType, getSpotStatus, coverPhoto, getServiceIcon, DEFAULT_PHOTO, SPOT_SERVICES } from './placeTypes';
 
 describe('getPlaceType', () => {
     it('returns the correct type for known categories', () => {
@@ -61,11 +61,35 @@ describe('getServiceIcon', () => {
         expect(getServiceIcon('Lavandería')).toBe('laundry');
         expect(getServiceIcon('Lavado de autocaravanas')).toBe('camperwash');
         expect(getServiceIcon('Se permiten mascotas')).toBe('pet');
+        expect(getServiceIcon('Sombra')).toBe('sun');
         expect(getServiceIcon('Panadería')).toBe('bread');
     });
 
     it('returns "info" for unknown services', () => {
         expect(getServiceIcon('Servicio desconocido')).toBe('info');
         expect(getServiceIcon('')).toBe('info');
+    });
+});
+
+describe('SPOT_SERVICES', () => {
+    it('includes all selectable services, including Sombra', () => {
+        expect(SPOT_SERVICES.map((service) => service.label)).toEqual([
+            'Agua potable',
+            'Aguas negras',
+            'Aguas grises',
+            'Cubo de basura',
+            'Baños públicos',
+            'Duchas (acceso posible)',
+            'Electricidad (acceso posible)',
+            'WIFI',
+            'Cobertura 5G',
+            'Piscina',
+            'Lavandería',
+            'Lavado de autocaravanas',
+            'Se permiten mascotas',
+            'Sombra',
+            'Panadería',
+        ]);
+        expect(SPOT_SERVICES.find((service) => service.label === 'Sombra')?.icon).toBe('sun');
     });
 });

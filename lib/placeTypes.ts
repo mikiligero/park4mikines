@@ -40,6 +40,32 @@ export function coverPhoto(images?: { url: string }[]): string {
   return images?.[0]?.url ?? DEFAULT_PHOTO;
 }
 
+export interface SpotServiceOption {
+  id: string;
+  label: string;
+  icon: IconName;
+  filterLabel?: string;
+}
+
+// Service labels must match the DB values written by AddSpotWizard.
+export const SPOT_SERVICES: SpotServiceOption[] = [
+  { id: "water",       label: "Agua potable",                    icon: "faucet" },
+  { id: "blackwater",  label: "Aguas negras",                    icon: "toilet" },
+  { id: "greywater",   label: "Aguas grises",                    icon: "greywater" },
+  { id: "trash",       label: "Cubo de basura",                  icon: "trash" },
+  { id: "toilets",     label: "Baños públicos",                  icon: "restroom" },
+  { id: "showers",     label: "Duchas (acceso posible)",         icon: "shower", filterLabel: "Duchas" },
+  { id: "electricity", label: "Electricidad (acceso posible)",   icon: "plug", filterLabel: "Electricidad" },
+  { id: "wifi",        label: "WIFI",                            icon: "wifi" },
+  { id: "5g",          label: "Cobertura 5G",                    icon: "signal" },
+  { id: "pool",        label: "Piscina",                         icon: "pool" },
+  { id: "laundry",     label: "Lavandería",                      icon: "laundry" },
+  { id: "carwash",     label: "Lavado de autocaravanas",         icon: "camperwash" },
+  { id: "pets",        label: "Se permiten mascotas",            icon: "pet" },
+  { id: "shade",       label: "Sombra",                          icon: "sun" },
+  { id: "bakery",      label: "Panadería",                       icon: "bread" },
+];
+
 // Service name → Icon name mapping
 const SERVICE_ICON_MAP: [string, IconName][] = [
   ["agua potable",             "faucet"],
@@ -59,7 +85,7 @@ const SERVICE_ICON_MAP: [string, IconName][] = [
   ["lavanderia",               "laundry"],
   ["lavado",                   "camperwash"],
   ["mascota",                  "pet"],
-  ["sombra",                   "parasol"],
+  ["sombra",                   "sun"],
   ["panadería",                "bread"],
   ["panaderia",                "bread"],
   ["vistas",                   "view"],

@@ -319,8 +319,9 @@ body {
   transition: background .15s, color .15s;
 }
 .svc-chip.is-on {
-  background: var(--primary-soft);
-  color: var(--primary-soft-text);
+  background: var(--primary);
+  color: var(--on-primary);
+  border-color: var(--primary-hover);
 }
 
 /* Chip "glass" sobre imágenes (tipo / pernocta en la foto de la tarjeta) */
