@@ -44,9 +44,18 @@ export default async function getCroppedImg(
 
     const rotRad = getRadianAngle(rotation)
 
-    // Calculate the center of the crop area
-    const centerX = pixelCrop.x + pixelCrop.width / 2
-    const centerY = pixelCrop.y + pixelCrop.height / 2
+    const { width: rotatedWidth, height: rotatedHeight } = rotateSize(image.width, image.height, rotation)
+
+    canvas.width = rotatedWidth
+    canvas.height = rotatedHeight
+
+    ctx.translate(rotatedWidth / 2, rotatedHeight / 2)
+    ctx.rotate(rotRad)
+    ctx.scale(flip.horizontal ? -1 : 1, flip.vertical ? -1 : 1)
+    ctx.translate(-image.width / 2, -image.height / 2)
+    ctx.drawImage(image, 0, 0)
+
+    const imageData = ctx.getImageData(pixelCrop.x, pixelCrop.y, pixelCrop.width, pixelCrop.height)
 
     // Max dimension for the cropped image (to avoid memory issues and speed up massive photos)
     const maxDimension = 1200;
@@ -69,24 +78,18 @@ export default async function getCroppedImg(
     canvas.width = targetWidth;
     canvas.height = targetHeight;
 
-    // Calculate scale factor
-    const scaleFactor = targetWidth / pixelCrop.width;
-
-    // Move the context to the center of the canvas
-    ctx.translate(canvas.width / 2, canvas.height / 2)
-
-    // Scale first (since we want the subsequent transforms and drawing to be scaled)
-    ctx.scale(scaleFactor, scaleFactor);
-
-    // Rotate and flip
-    ctx.rotate(rotRad)
-    ctx.scale(flip.horizontal ? -1 : 1, flip.vertical ? -1 : 1)
-
-    // Translate back so the crop center aligns with the canvas center
-    ctx.translate(-centerX, -centerY)
-
-    // Draw the image
-    ctx.drawImage(image, 0, 0)
+    const outputContext = canvas.getContext('2d')
+    if (!outputContext) return null
+    outputContext.putImageData(imageData, 0, 0)
+    if (targetWidth !== pixelCrop.width || targetHeight !== pixelCrop.height) {
+        const resizedCanvas = document.createElement('canvas')
+        resizedCanvas.width = pixelCrop.width
+        resizedCanvas.height = pixelCrop.height
+        const resizedContext = resizedCanvas.getContext('2d')
+        if (!resizedContext) return null
+        resizedContext.putImageData(imageData, 0, 0)
+        outputContext.drawImage(resizedCanvas, 0, 0, targetWidth, targetHeight)
+    }
 
     // As a compressed blob
     return new Promise((resolve) => {

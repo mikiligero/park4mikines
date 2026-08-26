@@ -8,7 +8,7 @@ on:
 
 jobs:
   test:
-    name: Unit Tests
+    name: Test and Build
     runs-on: ubuntu-latest
 
     steps:
@@ -26,3 +26,12 @@ jobs:
 
       - name: Run unit tests
         run: npm run test -- --run --reporter=verbose
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Build Next.js app
+        run: npm run build
+        env:
+          DATABASE_URL: file:./app.db
+          JWT_SECRET: ci-jwt-secret-not-for-production

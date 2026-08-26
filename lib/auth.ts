@@ -1,12 +1,8 @@
-import { SignJWT, jwtVerify } from "jose";
 import bcrypt from "bcryptjs";
 import { cookies } from "next/headers";
+import { signToken, verifyToken } from "./token";
 
-function getKey() {
-    const jwtSecret = process.env.JWT_SECRET;
-    if (!jwtSecret) throw new Error("JWT_SECRET environment variable is required");
-    return new TextEncoder().encode(jwtSecret);
-}
+export { signToken, verifyToken };
 
 export async function hashPassword(password: string) {
     return await bcrypt.hash(password, 10);
@@ -14,25 +10,6 @@ export async function hashPassword(password: string) {
 
 export async function verifyPassword(plain: string, hashed: string) {
     return await bcrypt.compare(plain, hashed);
-}
-
-export async function signToken(payload: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
-    return await new SignJWT(payload)
-        .setProtectedHeader({ alg: "HS256" })
-        .setIssuedAt()
-        .setExpirationTime("180d")
-        .sign(getKey());
-}
-
-export async function verifyToken(token: string) {
-    try {
-        const { payload } = await jwtVerify(token, getKey(), {
-            algorithms: ["HS256"],
-        });
-        return payload;
-    } catch {
-        return null;
-    }
 }
 
 export async function getSession() {

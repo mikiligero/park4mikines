@@ -129,6 +129,7 @@ export default function AddSpotWizard({ spot, onCancel, initialPhoto, initialLat
     const [crop, setCrop]                 = useState({ x: 0, y: 0 });
     const [zoom, setZoom]                 = useState(1);
     const [aspect, setAspect]             = useState(4 / 3);
+    const [rotation, setRotation]         = useState(0);
     const [croppedPixels, setCroppedPixels] = useState<any>(null);
     const fileInputRef   = useRef<HTMLInputElement>(null);
     const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -192,7 +193,7 @@ export default function AddSpotWizard({ spot, onCancel, initialPhoto, initialLat
         setIsProcessing(true);
         await new Promise(r => setTimeout(r, 100));
         try {
-            const blob = await getCroppedImg(imageSrc, croppedPixels);
+            const blob = await getCroppedImg(imageSrc, croppedPixels, rotation);
             if (blob) {
                 const file = new File([blob], `photo-${Date.now()}.webp`, { type: "image/webp" });
                 setFormData(p => {
@@ -209,7 +210,7 @@ export default function AddSpotWizard({ spot, onCancel, initialPhoto, initialLat
 
     const cancelCrop = () => {
         setImageSrc(null); setCroppingIdx(null);
-        setCrop({ x: 0, y: 0 }); setZoom(1); setAspect(4 / 3);
+        setCrop({ x: 0, y: 0 }); setZoom(1); setAspect(4 / 3); setRotation(0);
         if (fileInputRef.current) fileInputRef.current.value = "";
     };
 
@@ -800,10 +801,25 @@ export default function AddSpotWizard({ spot, onCancel, initialPhoto, initialLat
                         <button onClick={saveCrop} style={{ background: "none", border: "none", color: "var(--success)", cursor: "pointer", fontWeight: 700 }}>Guardar</button>
                     </div>
                     <div style={{ flex: 1, position: "relative" }}>
-                        <Cropper image={imageSrc} crop={crop} zoom={zoom} aspect={aspect}
+                        <Cropper image={imageSrc} crop={crop} zoom={zoom} rotation={rotation} aspect={aspect}
                             onCropChange={setCrop} onCropComplete={(_, px) => setCroppedPixels(px)} onZoomChange={setZoom} />
                     </div>
                     <div style={{ padding: "12px 16px 24px", background: "#111", display: "flex", flexDirection: "column", gap: 10 }}>
+                        <div style={{ display: "flex", justifyContent: "center" }}>
+                            <button
+                                type="button"
+                                title="Girar 90 grados"
+                                aria-label="Girar foto 90 grados"
+                                onClick={() => setRotation(value => (value + 90) % 360)}
+                                style={{
+                                    width: 40, height: 40, borderRadius: 8, border: "none", cursor: "pointer",
+                                    display: "flex", alignItems: "center", justifyContent: "center",
+                                    background: "#333", color: "white",
+                                }}
+                            >
+                                <Icon name="refresh" size={19} />
+                            </button>
+                        </div>
                         <div style={{ display: "flex", justifyContent: "center", gap: 8 }}>
                             {[["4:3", 4/3], ["1:1", 1], ["3:4", 3/4], ["16:9", 16/9]].map(([label, val]) => (
                                 <button key={label as string} onClick={() => setAspect(val as number)} style={{
