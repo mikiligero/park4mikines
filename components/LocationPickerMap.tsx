@@ -2,24 +2,27 @@
 
 import { useEffect } from "react";
 import { useTheme } from "next-themes";
-import { MapContainer, TileLayer, useMapEvents, useMap } from "react-leaflet";
-import "leaflet/dist/leaflet.css";
+import { ColorScheme, Map as GoogleMap, useMap } from "@vis.gl/react-google-maps";
+import GoogleMapsProvider from "@/components/GoogleMapsProvider";
 
 function MoveListener({ onMove }: { onMove: (lat: number, lng: number) => void }) {
-    const map = useMapEvents({
-        moveend: () => {
-            const c = map.getCenter();
-            onMove(c.lat, c.lng);
-        },
-    });
+    const map = useMap();
+    useEffect(() => {
+        if (!map) return;
+        const listener = map.addListener("idle", () => {
+            const center = map.getCenter();
+            if (center) onMove(center.lat(), center.lng());
+        });
+        return () => listener.remove();
+    }, [map, onMove]);
     return null;
 }
 
 function FlyTo({ position }: { position: [number, number] }) {
     const map = useMap();
     useEffect(() => {
-        map.flyTo(position, map.getZoom(), { animate: true, duration: 0.8 });
-    }, [position, map]); // eslint-disable-line
+        if (map) map.panTo({ lat: position[0], lng: position[1] });
+    }, [position, map]);
     return null;
 }
 
@@ -34,24 +37,20 @@ interface Props {
 
 export default function LocationPickerMap({ lat, lng, onMove, flyTo, zoom = 15, interactive = true }: Props) {
     const { resolvedTheme } = useTheme();
-    const tileUrl = resolvedTheme === "dark"
-        ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-        : "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
 
     return (
-        <MapContainer
-            center={[lat, lng]}
-            zoom={zoom}
-            className="h-full w-full"
-            zoomControl={false}
-            dragging={interactive}
-            scrollWheelZoom={interactive}
-            doubleClickZoom={interactive}
-            touchZoom={interactive}
-        >
-            <TileLayer key={resolvedTheme} url={tileUrl} attribution="&copy; CARTO" />
-            {onMove && <MoveListener onMove={onMove} />}
-            {flyTo && <FlyTo position={flyTo} />}
-        </MapContainer>
+        <GoogleMapsProvider>
+            <GoogleMap
+                defaultCenter={{ lat, lng }}
+                defaultZoom={zoom}
+                disableDefaultUI
+                gestureHandling={interactive ? "greedy" : "none"}
+                colorScheme={resolvedTheme === "dark" ? ColorScheme.DARK : ColorScheme.LIGHT}
+                className="h-full w-full"
+            >
+                {onMove && <MoveListener onMove={onMove} />}
+                {flyTo && <FlyTo position={flyTo} />}
+            </GoogleMap>
+        </GoogleMapsProvider>
     );
 }

@@ -82,19 +82,21 @@ export default function AddSpotWizard({ spot, onCancel, initialPhoto, initialLat
         mapSearchRef.current = setTimeout(async () => {
             setMapSearching(true);
             try {
-                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(val)}&limit=5`);
-                setMapSearchResults(await res.json());
+                const res = await fetch(`/api/places/search?q=${encodeURIComponent(val)}`);
+                if (!res.ok) throw new Error("Places search failed");
+                const data = await res.json();
+                setMapSearchResults(data.places ?? []);
             } catch { /* ignore */ }
             finally { setMapSearching(false); }
         }, 400);
     };
 
     const handleMapSearchSelect = (r: any) => {
-        const lat = parseFloat(r.lat);
-        const lng = parseFloat(r.lon);
+        const lat = r.lat;
+        const lng = r.lng;
         setFormData(p => ({ ...p, latitude: lat, longitude: lng }));
         setMapFlyTo([lat, lng]);
-        setMapSearch(r.display_name.split(",")[0]);
+        setMapSearch(r.displayName.split(",")[0]);
         setMapSearchResults([]);
     };
     const [coordInput, setCoordInput] = useState("");
@@ -357,7 +359,7 @@ export default function AddSpotWizard({ spot, onCancel, initialPhoto, initialLat
                                         >
                                             <Icon name="pin" size={13} style={{ color: "var(--muted)", flexShrink: 0 }} />
                                             <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                                {r.display_name}
+                                                {r.displayName}
                                             </span>
                                         </button>
                                     ))}

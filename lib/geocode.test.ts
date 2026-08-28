@@ -5,9 +5,14 @@ import { reverseGeocode } from './geocode';
 const mockFetch = vi.fn();
 vi.stubGlobal('fetch', mockFetch);
 
+function googleResult(components: Array<{ types: string[]; long_name: string }>) {
+    return { results: [{ address_components: components }] };
+}
+
 describe('reverseGeocode', () => {
     beforeEach(() => {
         mockFetch.mockReset();
+        process.env.GOOGLE_MAPS_SERVER_API_KEY = 'test-key';
     });
 
     it('devuelve null si fetch falla con status !== ok', async () => {
@@ -16,7 +21,7 @@ describe('reverseGeocode', () => {
         expect(result).toBeNull();
     });
 
-    it('devuelve null si la respuesta no contiene address', async () => {
+    it('devuelve null si la respuesta no contiene resultados', async () => {
         mockFetch.mockResolvedValueOnce({
             ok: true,
             json: async () => ({}),
@@ -31,16 +36,14 @@ describe('reverseGeocode', () => {
         expect(result).toBeNull();
     });
 
-    it('construye locationName con village, estado y país', async () => {
+    it('construye locationName con localidad, provincia y país', async () => {
         mockFetch.mockResolvedValueOnce({
             ok: true,
-            json: async () => ({
-                address: {
-                    village: 'Portillo de Toledo',
-                    state: 'Castilla-La Mancha',
-                    country: 'España',
-                },
-            }),
+            json: async () => googleResult([
+                { types: ['locality'], long_name: 'Portillo de Toledo' },
+                { types: ['administrative_area_level_1'], long_name: 'Castilla-La Mancha' },
+                { types: ['country'], long_name: 'España' },
+            ]),
         });
 
         const result = await reverseGeocode(39.9, -4.0);
@@ -50,16 +53,14 @@ describe('reverseGeocode', () => {
         expect(result!.country).toBe('España');
     });
 
-    it('construye locationName con town cuando no hay village', async () => {
+    it('construye locationName con postal_town cuando no hay locality', async () => {
         mockFetch.mockResolvedValueOnce({
             ok: true,
-            json: async () => ({
-                address: {
-                    town: 'Aranjuez',
-                    province: 'Madrid',
-                    country: 'España',
-                },
-            }),
+            json: async () => googleResult([
+                { types: ['postal_town'], long_name: 'Aranjuez' },
+                { types: ['administrative_area_level_2'], long_name: 'Madrid' },
+                { types: ['country'], long_name: 'España' },
+            ]),
         });
 
         const result = await reverseGeocode(40.03, -3.6);
@@ -69,17 +70,15 @@ describe('reverseGeocode', () => {
         expect(result!.country).toBe('España');
     });
 
-    it('usa province antes que state para locationName', async () => {
+    it('prioriza la provincia sobre la comunidad para locationName', async () => {
         mockFetch.mockResolvedValueOnce({
             ok: true,
-            json: async () => ({
-                address: {
-                    city: 'Toledo',
-                    province: 'Toledo',
-                    state: 'Castilla-La Mancha',
-                    country: 'España',
-                },
-            }),
+            json: async () => googleResult([
+                { types: ['locality'], long_name: 'Toledo' },
+                { types: ['administrative_area_level_2'], long_name: 'Toledo' },
+                { types: ['administrative_area_level_1'], long_name: 'Castilla-La Mancha' },
+                { types: ['country'], long_name: 'España' },
+            ]),
         });
 
         const result = await reverseGeocode(39.86, -4.02);
@@ -90,11 +89,7 @@ describe('reverseGeocode', () => {
     it('solo devuelve el país si no hay ciudad ni comunidad', async () => {
         mockFetch.mockResolvedValueOnce({
             ok: true,
-            json: async () => ({
-                address: {
-                    country: 'España',
-                },
-            }),
+            json: async () => googleResult([{ types: ['country'], long_name: 'España' }]),
         });
 
         const result = await reverseGeocode(40.0, -3.7);
@@ -103,19 +98,15 @@ describe('reverseGeocode', () => {
         expect(result!.country).toBe('España');
     });
 
-    it('llama a la API de Nominatim con las coordenadas correctas', async () => {
+    it('llama a la API de Google con las coordenadas correctas', async () => {
         mockFetch.mockResolvedValueOnce({
             ok: true,
-            json: async () => ({ address: { country: 'España' } }),
+            json: async () => googleResult([{ types: ['country'], long_name: 'España' }]),
         });
 
         await reverseGeocode(40.416, -3.703);
         expect(mockFetch).toHaveBeenCalledWith(
-            expect.stringContaining('lat=40.416'),
-            expect.any(Object)
-        );
-        expect(mockFetch).toHaveBeenCalledWith(
-            expect.stringContaining('lon=-3.703'),
+            expect.stringContaining('latlng=40.416,-3.703'),
             expect.any(Object)
         );
     });

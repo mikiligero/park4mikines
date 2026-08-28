@@ -4,16 +4,15 @@
 import { useEffect, useState, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTheme } from "next-themes";
-import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from "react-leaflet";
-import "leaflet/dist/leaflet.css";
-import L from "leaflet";
+import { ColorScheme, InfoWindow, Map as GoogleMap, Marker, useMap } from "@vis.gl/react-google-maps";
+import GoogleMapsProvider from "@/components/GoogleMapsProvider";
 import { Icon } from "@/components/Icon";
 import AddSpotWizard from "../AddSpotWizard";
 import SpotList from "../SpotList";
 import SpotDetail from "../SpotDetail";
 import { getPlaceType, SPOT_SERVICES } from "@/lib/placeTypes";
 
-// ── Marker icon SVG paths (plain HTML strings for Leaflet divIcon) ────────────
+// ── Marker icon SVG paths ───────────────────────────────────────────────────
 const MARKER_SVG: Record<string, string> = {
   NATURE:      `<g><path d="M12 3 6.5 11h3.2l-4 5.5h12.6l-4-5.5h3.2L12 3Z"/><path d="M12 16.5V21"/></g>`,
   AC_FREE:     `<g><path d="M2.5 16V8.6A1.6 1.6 0 0 1 4.1 7H13l5.4 4.6h1.1A1.4 1.4 0 0 1 21 13v3"/><path d="M2.5 16h2.3M9.3 16h5M19 16h2"/><circle cx="7" cy="16.5" r="2.2"/><circle cx="16.8" cy="16.5" r="2.2"/><rect x="4.6" y="9.4" width="3.4" height="2.8" rx="0.6"/></g>`,
@@ -29,7 +28,7 @@ const MARKER_SVG: Record<string, string> = {
   PERNOCTA:    `<path d="M20 13a8 8 0 1 1-9-9 6.5 6.5 0 0 0 9 9Z" fill="white"/>`,
 };
 
-function markerHtml(category: string, selected = false, isFavorite = false): string {
+function spotMarkerSvg(category: string, selected = false, isFavorite = false): string {
   const type = getPlaceType(category);
   const size = selected ? 46 : 38;
   const border = selected ? 4 : 3;
@@ -39,122 +38,41 @@ function markerHtml(category: string, selected = false, isFavorite = false): str
   const svg = MARKER_SVG[category] ?? MARKER_SVG.NATURE;
 
   return `
-    <div style="position:relative;display:flex;flex-direction:column;align-items:center">
-      <div style="
-        width:${size}px;height:${size}px;background:${type.color};
-        border-radius:50%;border:${border}px solid white;
-        box-shadow:0 2px 10px rgba(0,0,0,0.28);
-        display:flex;align-items:center;justify-content:center;
-      ">
-        <svg width="${iconSize}" height="${iconSize}" viewBox="0 0 24 24"
-          fill="none" stroke="white" stroke-width="2"
-          stroke-linecap="round" stroke-linejoin="round">
-          ${svg}
-        </svg>
-      </div>
-      <div style="
-        width:0;height:0;
-        border-left:${triBase}px solid transparent;
-        border-right:${triBase}px solid transparent;
-        border-top:${triHeight}px solid ${type.color};
-        margin-top:-2px;
-      "></div>
-      ${isFavorite ? `
-        <div style="
-          position:absolute;top:-2px;right:-2px;
-          width:14px;height:14px;background:#E5484D;
-          border-radius:50%;border:2px solid white;
-          display:flex;align-items:center;justify-content:center;
-        ">
-          <svg width="8" height="8" viewBox="0 0 24 24" fill="white" stroke="none">
-            <path d="M12 20s-7-4.5-9.5-9A4.5 4.5 0 0 1 12 6a4.5 4.5 0 0 1 9.5 5c-2.5 4.5-9.5 9-9.5 9Z"/>
-          </svg>
-        </div>` : ''}
-    </div>
+    <svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size + triHeight - 2}" viewBox="0 0 ${size} ${size + triHeight - 2}">
+      <circle cx="${size / 2}" cy="${size / 2}" r="${size / 2 - border / 2}" fill="${type.color}" stroke="white" stroke-width="${border}"/>
+      <g transform="translate(${(size - iconSize) / 2} ${(size - iconSize) / 2}) scale(${iconSize / 24})" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${svg}</g>
+      <path d="M${size / 2 - triBase} ${size - 2}H${size / 2 + triBase}L${size / 2} ${size + triHeight - 2}Z" fill="${type.color}"/>
+      ${isFavorite ? `<circle cx="${size - 5}" cy="5" r="7" fill="#E5484D" stroke="white" stroke-width="2"/><path d="M${size - 5} 9s-4-2.6-5.4-5.1A2.55 2.55 0 0 1 ${size - 5} 1.1a2.55 2.55 0 0 1 5.4 2.8C${size - 1} 6.4 ${size - 5} 9 ${size - 5} 9Z" fill="white"/>` : ""}
+    </svg>
   `;
 }
 
-function pernoctaMarkerHtml(): string {
+function pernoctaMarkerSvg(): string {
   return `
-    <div style="display:flex;flex-direction:column;align-items:center">
-      <div style="
-        width:32px;height:32px;background:#4F46E5;
-        border-radius:50%;border:3px solid white;
-        box-shadow:0 2px 8px rgba(0,0,0,0.25);
-        display:flex;align-items:center;justify-content:center;
-      ">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          ${MARKER_SVG.PERNOCTA}
-        </svg>
-      </div>
-      <div style="
-        width:0;height:0;
-        border-left:5px solid transparent;border-right:5px solid transparent;
-        border-top:7px solid #4F46E5;margin-top:-2px;
-      "></div>
-    </div>
+    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="37" viewBox="0 0 32 37">
+      <circle cx="16" cy="16" r="14.5" fill="#4F46E5" stroke="white" stroke-width="3"/>
+      <g transform="translate(8 8) scale(.667)" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${MARKER_SVG.PERNOCTA}</g>
+      <path d="M11 30H21L16 37Z" fill="#4F46E5"/>
+    </svg>
   `;
 }
 
-const createSpotIcon = (category: string, selected = false, isFavorite = false) =>
-  L.divIcon({
-    className: "",
-    html: markerHtml(category, selected, isFavorite),
-    iconSize:   selected ? [46, 56] : [38, 46],
-    iconAnchor: selected ? [23, 56] : [19, 46],
-    popupAnchor: [0, -50],
-  });
-
-const createPernoctaIcon = () =>
-  L.divIcon({
-    className: "",
-    html: pernoctaMarkerHtml(),
-    iconSize: [32, 39],
-    iconAnchor: [16, 39],
-    popupAnchor: [0, -42],
-  });
-
-// ── User location dot ─────────────────────────────────────────────────────────
-function LocationMarker({ position }: { position: [number, number] | null }) {
-  if (!position) return null;
-  return (
-    <Marker
-      position={position}
-      zIndexOffset={1000}
-      icon={L.divIcon({
-        className: "",
-        html: `
-          <div style="
-            width:18px;height:18px;background:#2B7FE0;
-            border-radius:50%;border:3px solid white;
-            box-shadow:0 0 0 6px rgba(43,127,224,0.25);
-          "></div>
-        `,
-        iconSize: [18, 18],
-        iconAnchor: [9, 9],
-      })}
-    >
-      <Popup>Estás aquí</Popup>
-    </Marker>
-  );
+function svgMarkerIcon(svg: string): string {
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
 }
 
-// ── Map event listener ────────────────────────────────────────────────────────
-function MapEvents({ setBounds }: { setBounds: (b: L.LatLngBounds) => void }) {
-  const map = useMap();
-  useEffect(() => { if (map) setBounds(map.getBounds()); }, [map, setBounds]);
-  useMapEvents({
-    moveend: () => setBounds(map.getBounds()),
-    zoomend: () => setBounds(map.getBounds()),
-  });
-  return null;
-}
+const createSpotIcon = (category: string, selected = false, isFavorite = false) => svgMarkerIcon(spotMarkerSvg(category, selected, isFavorite));
+const createPernoctaIcon = () => svgMarkerIcon(pernoctaMarkerSvg());
+const createUserLocationIcon = () => svgMarkerIcon(`<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 30 30"><circle cx="15" cy="15" r="12" fill="rgba(43,127,224,.25)"/><circle cx="15" cy="15" r="8" fill="#2B7FE0" stroke="white" stroke-width="3"/></svg>`);
 
 // ── Fly-to controller ─────────────────────────────────────────────────────────
 function MapController({ center, zoom }: { center: [number, number] | null; zoom: number }) {
   const map = useMap();
   useEffect(() => {
-    if (center) map.flyTo(center, zoom, { animate: true });
+    if (center && map) {
+      map.panTo({ lat: center[0], lng: center[1] });
+      map.setZoom(zoom);
+    }
   }, [center, zoom, map]);
   return null;
 }
@@ -176,8 +94,8 @@ function ZoomControls() {
       position: "absolute", bottom: 100, right: 16, zIndex: 900,
       display: "flex", flexDirection: "column", gap: 4,
     }}>
-      <button style={btnStyle} onClick={() => map.zoomIn()}  title="Acercar">+</button>
-      <button style={btnStyle} onClick={() => map.zoomOut()} title="Alejar">−</button>
+      <button style={btnStyle} onClick={() => map?.setZoom((map.getZoom() ?? 0) + 1)} title="Acercar">+</button>
+      <button style={btnStyle} onClick={() => map?.setZoom((map.getZoom() ?? 0) - 1)} title="Alejar">−</button>
     </div>
   );
 }
@@ -193,12 +111,6 @@ function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): nu
 }
 function fmtDist(km: number): string {
   return km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1)} km`;
-}
-
-// ── Map click (closes peek card) ─────────────────────────────────────────────
-function MapClickHandler({ onMapClick }: { onMapClick: () => void }) {
-  useMapEvents({ click: onMapClick });
-  return null;
 }
 
 // ── Peek card ─────────────────────────────────────────────────────────────────
@@ -305,9 +217,11 @@ function PeekCard({ spot, onClose, onOpenDetail }: {
 // ── Main export ───────────────────────────────────────────────────────────────
 export default function Map({ spots, pernoctas = [] }: { spots: any[]; pernoctas?: any[] }) {
   return (
-    <Suspense fallback={null}>
-      <MapContent spots={spots} pernoctas={pernoctas} />
-    </Suspense>
+    <GoogleMapsProvider>
+      <Suspense fallback={null}>
+        <MapContent spots={spots} pernoctas={pernoctas} />
+      </Suspense>
+    </GoogleMapsProvider>
   );
 }
 
@@ -336,7 +250,8 @@ function MapContent({ spots, pernoctas = [] }: { spots: any[]; pernoctas?: any[]
   const [isLocating, setIsLocating]                 = useState(false);
   const [userPosition, setUserPosition]             = useState<[number, number] | null>(null);
   const [viewMode, setViewMode]                     = useState<"map" | "list">("map");
-  const [bounds, setBounds]                         = useState<L.LatLngBounds | null>(null);
+  const [bounds, setBounds]                         = useState<google.maps.LatLngBounds | null>(null);
+  const [selectedPernocta, setSelectedPernocta]     = useState<any | null>(null);
 
   const ignoreSearchRef = useRef(false);
 
@@ -378,9 +293,10 @@ function MapContent({ spots, pernoctas = [] }: { spots: any[]; pernoctas?: any[]
       if (searchQuery.trim().length > 2) {
         setIsSearching(true);
         try {
-          const res  = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=5`);
+          const res = await fetch(`/api/places/search?q=${encodeURIComponent(searchQuery)}`);
+          if (!res.ok) throw new Error("Places search failed");
           const data = await res.json();
-          setSearchResults(data);
+          setSearchResults(data.places ?? []);
           setShowSearchResults(true);
         } catch {}
         finally { setIsSearching(false); }
@@ -392,8 +308,8 @@ function MapContent({ spots, pernoctas = [] }: { spots: any[]; pernoctas?: any[]
     return () => clearTimeout(id);
   }, [searchQuery]);
 
-  const handleSelectLocation = (lat: string, lon: string, displayName: string) => {
-    const latN = parseFloat(lat), lonN = parseFloat(lon);
+  const handleSelectLocation = (lat: number, lng: number, displayName: string) => {
+    const latN = lat, lonN = lng;
     if (!isNaN(latN) && !isNaN(lonN)) {
       ignoreSearchRef.current = true;
       setInitialPosition([latN, lonN]);
@@ -444,18 +360,13 @@ function MapContent({ spots, pernoctas = [] }: { spots: any[]; pernoctas?: any[]
     }));
 
   const visibleSpots = filteredSpots
-    .filter(spot => !bounds || bounds.contains([spot.latitude, spot.longitude]))
+    .filter(spot => !bounds || bounds.contains({ lat: spot.latitude, lng: spot.longitude }))
     .sort((a, b) => ((a._distanceKm ?? Infinity) - (b._distanceKm ?? Infinity)));
 
   const activeFilterCount =
     selectedCategories.length + selectedServices.length +
     (showFavoritesOnly ? 1 : 0) + (minRating > 0 ? 1 : 0) +
     (aptosPernoctar ? 1 : 0) + (soloGratuitos ? 1 : 0);
-
-  // Tile URL switches with theme
-  const tileUrl = resolvedTheme === "dark"
-    ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-    : "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
 
   const categories = [
     "NATURE", "PARKING_DN", "REST_AREA", "PICNIC",
@@ -471,7 +382,7 @@ function MapContent({ spots, pernoctas = [] }: { spots: any[]; pernoctas?: any[]
     );
   }
 
-  // ── Buscador unificado (mis sitios + Nominatim) ───────────────────────────
+  // ── Buscador unificado (mis sitios + Google Places) ──────────────────────
   const spotMatches = searchQuery.trim().length > 1
     ? spots.filter(s => s.title.toLowerCase().includes(searchQuery.toLowerCase())).slice(0, 4)
     : [];
@@ -497,7 +408,7 @@ function MapContent({ spots, pernoctas = [] }: { spots: any[]; pernoctas?: any[]
           value={searchQuery}
           onChange={e => { setSearchQuery(e.target.value); setShowSearchResults(true); }}
           onFocus={() => { if (spotMatches.length > 0 || searchResults.length > 0) setShowSearchResults(true); }}
-          onKeyDown={e => { if (e.key === "Enter") { if (spotMatches.length > 0) handleSelectSpot(spotMatches[0]); else if (searchResults.length > 0) { const r = searchResults[0]; handleSelectLocation(r.lat, r.lon, r.display_name); } } }}
+          onKeyDown={e => { if (e.key === "Enter") { if (spotMatches.length > 0) handleSelectSpot(spotMatches[0]); else if (searchResults.length > 0) { const r = searchResults[0]; handleSelectLocation(r.lat, r.lng, r.displayName); } } }}
         />
         {isSearching && <div style={{ width: 14, height: 14, borderRadius: "50%", border: "2px solid var(--border)", borderTopColor: "var(--primary)", animation: "spin .7s linear infinite", flexShrink: 0 }} />}
         {searchQuery && !isSearching && (
@@ -532,7 +443,7 @@ function MapContent({ spots, pernoctas = [] }: { spots: any[]; pernoctas?: any[]
               })}
             </>
           )}
-          {/* Nominatim */}
+          {/* Google Places */}
           {searchResults.length > 0 && (
             <>
               <div style={{ padding: "6px 14px 4px", fontSize: 10, fontWeight: 800, color: "var(--faint)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
@@ -542,10 +453,10 @@ function MapContent({ spots, pernoctas = [] }: { spots: any[]; pernoctas?: any[]
                 <button key={i} style={{ width: "100%", textAlign: "left", padding: "8px 14px", display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--text)", background: "transparent", border: "none", borderBottom: i < searchResults.length - 1 ? "1px solid var(--border)" : "none", cursor: "pointer", fontFamily: "var(--font)" }}
                   onMouseEnter={e => (e.currentTarget.style.background = "var(--surface-2)")}
                   onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
-                  onClick={() => handleSelectLocation(r.lat, r.lon, r.display_name)}
+                  onClick={() => handleSelectLocation(r.lat, r.lng, r.displayName)}
                 >
                   <Icon name="pin" size={14} style={{ color: "var(--muted)", flexShrink: 0 }} />
-                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.display_name}</span>
+                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.displayName}</span>
                 </button>
               ))}
             </>
@@ -595,32 +506,39 @@ function MapContent({ spots, pernoctas = [] }: { spots: any[]; pernoctas?: any[]
 
       {/* ══ Área del mapa (flex-1 en escritorio, pantalla completa en móvil) ══ */}
       <div style={{ flex: 1, position: "relative", height: "100%", minWidth: 0 }}>
-        <MapContainer center={initialPosition} zoom={zoom} scrollWheelZoom zoomControl={false} className="h-full w-full">
-          <MapEvents setBounds={setBounds} />
+        <GoogleMap
+          defaultCenter={{ lat: initialPosition[0], lng: initialPosition[1] }}
+          defaultZoom={zoom}
+          gestureHandling="greedy"
+          disableDefaultUI
+          colorScheme={resolvedTheme === "dark" ? ColorScheme.DARK : ColorScheme.LIGHT}
+          className="h-full w-full"
+          onIdle={event => setBounds(event.map.getBounds() ?? null)}
+          onClick={() => { setPeekSpot(null); setSelectedPernocta(null); }}
+        >
           <MapController center={initialPosition} zoom={zoom} />
-          <MapClickHandler onMapClick={() => setPeekSpot(null)} />
           <ZoomControls />
-          <TileLayer key={resolvedTheme} attribution='&copy; <a href="https://carto.com/">CARTO</a>' url={tileUrl} />
-          <LocationMarker position={userPosition} />
+          {userPosition && <Marker position={{ lat: userPosition[0], lng: userPosition[1] }} zIndex={1000} icon={createUserLocationIcon()} />}
           {filteredSpots.map(spot => (
-            <Marker key={spot.id} position={[spot.latitude, spot.longitude]}
+            <Marker key={spot.id} position={{ lat: spot.latitude, lng: spot.longitude }}
               icon={createSpotIcon(spot.category, peekSpot?.id === spot.id || selectedSpot?.id === spot.id, spot.isFavorite)}
-              eventHandlers={{ click: () => { setPeekSpot(spot); setSelectedSpot(null); } }}
+              onClick={() => { setPeekSpot(spot); setSelectedSpot(null); }}
             />
           ))}
           {showPernoctas && pernoctas.map(p => (
-            <Marker key={`p-${p.id}`} position={[p.latitude, p.longitude]} icon={createPernoctaIcon()}>
-              <Popup>
+            <Marker key={`p-${p.id}`} position={{ lat: p.latitude, lng: p.longitude }} icon={createPernoctaIcon()} onClick={() => setSelectedPernocta(p)} />
+          ))}
+          {selectedPernocta && (
+            <InfoWindow position={{ lat: selectedPernocta.latitude, lng: selectedPernocta.longitude }} onCloseClick={() => setSelectedPernocta(null)}>
                 <div style={{ fontFamily: "var(--font)", padding: 2 }}>
                   <div style={{ fontWeight: 700, color: "var(--primary)", marginBottom: 2 }}>Pernocta</div>
-                  <div style={{ fontSize: 12, color: "var(--muted)" }}>{new Date(p.date).toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" })}</div>
-                  {p.locationName && <div style={{ fontSize: 12, fontWeight: 600, marginTop: 2 }}>{p.locationName}</div>}
-                  {p.notes && <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2, fontStyle: "italic" }}>"{p.notes}"</div>}
+                  <div style={{ fontSize: 12, color: "var(--muted)" }}>{new Date(selectedPernocta.date).toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" })}</div>
+                  {selectedPernocta.locationName && <div style={{ fontSize: 12, fontWeight: 600, marginTop: 2 }}>{selectedPernocta.locationName}</div>}
+                  {selectedPernocta.notes && <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2, fontStyle: "italic" }}>"{selectedPernocta.notes}"</div>}
                 </div>
-              </Popup>
-            </Marker>
-          ))}
-        </MapContainer>
+            </InfoWindow>
+          )}
+        </GoogleMap>
 
         {/* Peek card (ambas vistas) */}
         {peekSpot && !selectedSpot && (
@@ -855,7 +773,6 @@ function MapContent({ spots, pernoctas = [] }: { spots: any[]; pernoctas?: any[]
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes slideUp { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-        .leaflet-container { background: var(--bg); }
       `}</style>
     </div>
   );

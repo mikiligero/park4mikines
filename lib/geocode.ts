@@ -1,6 +1,6 @@
 /**
  * Resolves a human-readable location name from GPS coordinates using
- * the Nominatim API (OpenStreetMap). Free, no API key required.
+ * the Google Geocoding API. The key remains server-side.
  * Returns null on error or if no result is found.
  */
 import { logger } from "@/lib/logger";
@@ -13,31 +13,29 @@ export interface GeocodeResult {
 
 export async function reverseGeocode(lat: number, lon: number): Promise<GeocodeResult | null> {
     try {
-        const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=es`;
+        const apiKey = process.env.GOOGLE_MAPS_SERVER_API_KEY;
+        if (!apiKey) return null;
+
+        const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lon}&language=es&key=${apiKey}`;
         const res = await fetch(url, {
-            headers: {
-                "User-Agent": "Park4Mikines/1.0 (caravan-app)",
-            },
             signal: AbortSignal.timeout(5000),
         });
 
         if (!res.ok) return null;
 
         const data = await res.json();
-        const addr = data.address;
-        if (!addr) return null;
+        const components = data.results?.[0]?.address_components;
+        if (!components) return null;
 
-        const city = addr.village || addr.town || addr.municipality || addr.city;
-        // In Spain: addr.province = "Madrid", "Jaén", "Toledo"
-        //           addr.state    = "Comunidad de Madrid", "Andalucía" (CCAA)
-        const province = addr.province || addr.state || addr.county || null;
-        const country = addr.country || null;
+        const getComponent = (type: string) => components.find((component: any) => component.types.includes(type))?.long_name ?? null;
+        const city = getComponent("locality") || getComponent("postal_town") || getComponent("administrative_area_level_3");
+        const province = getComponent("administrative_area_level_2") || getComponent("administrative_area_level_1");
+        const country = getComponent("country");
 
-        // Build display name: "Portillo de Toledo, Toledo, España"
         const displayParts: string[] = [];
         if (city) displayParts.push(city);
         
-        const displayRegion = addr.province || addr.state || addr.county;
+        const displayRegion = province;
         if (displayRegion && displayRegion !== city) displayParts.push(displayRegion);
         
         if (country) displayParts.push(country);
