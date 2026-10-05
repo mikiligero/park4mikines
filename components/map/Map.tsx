@@ -3,6 +3,8 @@
 
 import { useEffect, useState, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
+import type { VisitPlaceItem, VisitTypeOption } from "@/lib/visits";
 import { useTheme } from "next-themes";
 import { ColorScheme, InfoWindow, Map as GoogleMap, Marker, useMap } from "@vis.gl/react-google-maps";
 import GoogleMapsProvider from "@/components/GoogleMapsProvider";
@@ -10,6 +12,8 @@ import { Icon } from "@/components/Icon";
 import AddSpotWizard from "../AddSpotWizard";
 import SpotList from "../SpotList";
 import SpotDetail from "../SpotDetail";
+import VisitMapCard from "./VisitMapCard";
+import VisitPlaceDetail from "../VisitPlaceDetail";
 import { getPlaceType, SPOT_SERVICES } from "@/lib/placeTypes";
 
 // ── Marker icon SVG paths ───────────────────────────────────────────────────
@@ -78,7 +82,7 @@ function MapController({ center, zoom }: { center: [number, number] | null; zoom
 }
 
 // ── Custom zoom buttons ───────────────────────────────────────────────────────
-function ZoomControls() {
+function ZoomControls({ hiddenOnMobile = false }: { hiddenOnMobile?: boolean }) {
   const map = useMap();
   const btnStyle: React.CSSProperties = {
     width: 40, height: 40, background: "var(--surface)",
@@ -90,7 +94,7 @@ function ZoomControls() {
     transition: "background .15s",
   };
   return (
-    <div style={{
+    <div className={hiddenOnMobile ? "map-desktop-controls" : undefined} style={{
       position: "absolute", bottom: 100, right: 16, zIndex: 900,
       display: "flex", flexDirection: "column", gap: 4,
     }}>
@@ -215,18 +219,40 @@ function PeekCard({ spot, onClose, onOpenDetail }: {
 }
 
 // ── Main export ───────────────────────────────────────────────────────────────
-export default function Map({ spots, pernoctas = [] }: { spots: any[]; pernoctas?: any[] }) {
+type VisitMapProps = { spots: any[]; pernoctas?: any[]; visits?: VisitPlaceItem[]; visitTypes?: VisitTypeOption[]; userId?: number | null; isAdmin?: boolean };
+
+export default function Map({ spots, pernoctas = [], visits = [], visitTypes = [], userId = null, isAdmin = false }: VisitMapProps) {
   return (
     <GoogleMapsProvider>
       <Suspense fallback={null}>
-        <MapContent spots={spots} pernoctas={pernoctas} />
+        <MapContent spots={spots} pernoctas={pernoctas} visits={visits} visitTypes={visitTypes} userId={userId} isAdmin={isAdmin} />
       </Suspense>
     </GoogleMapsProvider>
   );
 }
 
-function MapContent({ spots, pernoctas = [] }: { spots: any[]; pernoctas?: any[] }) {
+function SpainOverview({ enabled }: { enabled: boolean }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!map || !enabled) return;
+    // Keep the responsive zoom calculation and center the final view on the peninsula.
+    const listener = google.maps.event.addListenerOnce(map, "idle", () => {
+      map.setZoom((map.getZoom() ?? 5) + 1);
+      map.setCenter({ lat: 40, lng: -3.5 });
+    });
+    map.fitBounds(
+      { north: 44, south: 27.5, west: -18.5, east: 4.5 },
+      { top: 110, right: 32, bottom: 80, left: 32 },
+    );
+    return () => listener.remove();
+  }, [map, enabled]);
+  return null;
+}
+
+function MapContent({ spots, pernoctas = [], visits = [], visitTypes = [], userId = null, isAdmin = false }: VisitMapProps) {
   const searchParams = useSearchParams();
+  const viewQuery = searchParams.toString();
+  const visitsOnly = searchParams.get("visits") === "true" || searchParams.has("visit");
   const { resolvedTheme } = useTheme();
 
   const [showFilters, setShowFilters]               = useState(false);
@@ -237,7 +263,10 @@ function MapContent({ spots, pernoctas = [] }: { spots: any[]; pernoctas?: any[]
   const [aptosPernoctar, setAptosPernoctar]         = useState(false);
   const [soloGratuitos, setSoloGratuitos]           = useState(false);
   const [showPernoctas, setShowPernoctas]           = useState(false);
-  const [showSpots, setShowSpots]                   = useState(true);
+  const [showSpots, setShowSpots]                   = useState(!visitsOnly);
+  const [showVisits, setShowVisits]                 = useState(true);
+  const [selectedVisit, setSelectedVisit]           = useState<VisitPlaceItem | null>(null);
+  const [detailVisitId, setDetailVisitId]           = useState<number | null>(null);
   const [initialPosition, setInitialPosition]       = useState<[number, number] | null>(null);
   const [zoom, setZoom]                             = useState(14);
   const [selectedSpot, setSelectedSpot]             = useState<any | null>(null);
@@ -257,6 +286,22 @@ function MapContent({ spots, pernoctas = [] }: { spots: any[]; pernoctas?: any[]
 
   // Query-param driven view
   useEffect(() => {
+    setSelectedSpot(null);
+    setPeekSpot(null);
+    setSelectedPernocta(null);
+    setSelectedVisit(null);
+    setDetailVisitId(null);
+    const visit = visits.find(p => p.id === Number(searchParams.get("visit")));
+    if (visit && visit.latitude !== null && visit.longitude !== null) {
+      setShowVisits(true); setShowSpots(false); setShowPernoctas(false);
+      setSelectedVisit(visit); setInitialPosition([visit.latitude, visit.longitude]); setZoom(13);
+      return;
+    }
+    if (visitsOnly) {
+      setShowVisits(true); setShowSpots(false); setShowPernoctas(false);
+      setInitialPosition([40.0, -3.7]); setZoom(6);
+      return;
+    }
     if (searchParams.get("pernoctas") === "true") {
       setShowPernoctas(true);
       setShowSpots(false);
@@ -267,7 +312,12 @@ function MapContent({ spots, pernoctas = [] }: { spots: any[]; pernoctas?: any[]
       setShowPernoctas(false);
       setZoom(prev => prev === 6 ? 14 : prev);
     }
-  }, [searchParams]);
+  }, [viewQuery, visitsOnly]);
+
+  // A refresh updates the selected place without closing its detail or resetting the map.
+  useEffect(() => {
+    setSelectedVisit(previous => previous ? visits.find(place => place.id === previous.id) ?? null : null);
+  }, [visits]);
 
   // Geolocation on mount
   useEffect(() => {
@@ -275,14 +325,14 @@ function MapContent({ spots, pernoctas = [] }: { spots: any[]; pernoctas?: any[]
       navigator.geolocation.getCurrentPosition(
         ({ coords }) => {
           const pos: [number, number] = [coords.latitude, coords.longitude];
-          setInitialPosition(pos);
+          setInitialPosition(previous => previous ?? pos);
           setUserPosition(pos);
         },
-        () => setInitialPosition([40.416775, -3.70379]),
+        () => setInitialPosition(previous => previous ?? [40.416775, -3.70379]),
         { timeout: 5000 }
       );
     } else {
-      setInitialPosition([40.416775, -3.70379]);
+      setInitialPosition(previous => previous ?? [40.416775, -3.70379]);
     }
   }, []);
 
@@ -368,6 +418,26 @@ function MapContent({ spots, pernoctas = [] }: { spots: any[]; pernoctas?: any[]
     (showFavoritesOnly ? 1 : 0) + (minRating > 0 ? 1 : 0) +
     (aptosPernoctar ? 1 : 0) + (soloGratuitos ? 1 : 0);
 
+  const mappedVisits = showVisits ? visits.filter(p => (!p.visited || String(p.id) === searchParams.get("visit")) && p.latitude !== null && p.longitude !== null) : [];
+  const detailVisit = visits.find(place => place.id === detailVisitId);
+  const openVisitDetail = (place: VisitPlaceItem) => {
+    setSelectedVisit(place);
+    setDetailVisitId(place.id);
+    setPeekSpot(null);
+    setSelectedSpot(null);
+    setSelectedPernocta(null);
+  };
+  const visibleVisits = mappedVisits.filter(p => !bounds || bounds.contains({ lat: p.latitude!, lng: p.longitude! }));
+  const renderVisitList = () => visibleVisits.length > 0 && (
+    <div className="visit-map-list">
+      <Link href="/por-visitar" className="visit-map-list-title">Por visitar <span>{visibleVisits.length}</span></Link>
+      {visibleVisits.map(p => <VisitMapCard key={p.id} place={p} selected={selectedVisit?.id === p.id} onOpenDetail={() => openVisitDetail(p)} onSelect={() => {
+        setSelectedVisit(p); setPeekSpot(null); setSelectedSpot(null); setSelectedPernocta(null);
+        setInitialPosition([p.latitude!, p.longitude!]); setZoom(13); setViewMode("map");
+      }} />)}
+    </div>
+  );
+
   const categories = [
     "NATURE", "PARKING_DN", "REST_AREA", "PICNIC",
     "AC_FREE", "AC_PAID", "OFFROAD", "CAMPING", "SERVICE", "PARKING_DAY", "CANDIDATO",
@@ -383,7 +453,7 @@ function MapContent({ spots, pernoctas = [] }: { spots: any[]; pernoctas?: any[]
   }
 
   // ── Buscador unificado (mis sitios + Google Places) ──────────────────────
-  const spotMatches = searchQuery.trim().length > 1
+  const spotMatches = showSpots && searchQuery.trim().length > 1
     ? spots.filter(s => s.title.toLowerCase().includes(searchQuery.toLowerCase())).slice(0, 4)
     : [];
   const showDropdown = showSearchResults && (spotMatches.length > 0 || searchResults.length > 0);
@@ -395,6 +465,8 @@ function MapContent({ spots, pernoctas = [] }: { spots: any[]; pernoctas?: any[]
     setSearchResults([]);
     setInitialPosition([spot.latitude, spot.longitude]);
     setSelectedSpot(null);
+    setSelectedVisit(null);
+    setSelectedPernocta(null);
     setPeekSpot(spot);
   };
 
@@ -495,12 +567,13 @@ function MapContent({ spots, pernoctas = [] }: { spots: any[]; pernoctas?: any[]
 
         {/* Contador */}
         <div style={{ padding: "8px 20px 4px", fontSize: 13, fontWeight: 600, color: "var(--muted)", flexShrink: 0, background: "var(--surface)" }}>
-          {visibleSpots.length} lugar{visibleSpots.length !== 1 ? "es" : ""}
+          {visibleSpots.length + visibleVisits.length} lugares en esta zona
         </div>
 
         {/* Lista de lugares */}
         <div style={{ flex: 1, overflowY: "auto", background: "var(--bg)" }}>
-          <SpotList spots={visibleSpots} onSpotClick={s => setSelectedSpot(s)} />
+          {renderVisitList()}
+          {(visibleSpots.length > 0 || visibleVisits.length === 0) && <SpotList spots={visibleSpots} onSpotClick={s => setSelectedSpot(s)} />}
         </div>
       </div>
 
@@ -514,20 +587,25 @@ function MapContent({ spots, pernoctas = [] }: { spots: any[]; pernoctas?: any[]
           colorScheme={resolvedTheme === "dark" ? ColorScheme.DARK : ColorScheme.LIGHT}
           className="h-full w-full"
           onIdle={event => setBounds(event.map.getBounds() ?? null)}
-          onClick={() => { setPeekSpot(null); setSelectedPernocta(null); }}
+          onClick={() => { setPeekSpot(null); setSelectedPernocta(null); setSelectedVisit(null); }}
         >
           <MapController center={initialPosition} zoom={zoom} />
-          <ZoomControls />
+          <SpainOverview enabled={searchParams.get("visits") === "true" && !searchParams.has("visit")} />
+          <ZoomControls hiddenOnMobile={viewMode === "list"} />
           {userPosition && <Marker position={{ lat: userPosition[0], lng: userPosition[1] }} zIndex={1000} icon={createUserLocationIcon()} />}
           {filteredSpots.map(spot => (
             <Marker key={spot.id} position={{ lat: spot.latitude, lng: spot.longitude }}
               icon={createSpotIcon(spot.category, peekSpot?.id === spot.id || selectedSpot?.id === spot.id, spot.isFavorite)}
-              onClick={() => { setPeekSpot(spot); setSelectedSpot(null); }}
+              onClick={() => { setPeekSpot(spot); setSelectedSpot(null); setSelectedVisit(null); }}
             />
           ))}
           {showPernoctas && pernoctas.map(p => (
-            <Marker key={`p-${p.id}`} position={{ lat: p.latitude, lng: p.longitude }} icon={createPernoctaIcon()} onClick={() => setSelectedPernocta(p)} />
+            <Marker key={`p-${p.id}`} position={{ lat: p.latitude, lng: p.longitude }} icon={createPernoctaIcon()} onClick={() => { setSelectedPernocta(p); setSelectedVisit(null); setPeekSpot(null); }} />
           ))}
+          {mappedVisits.map(p => <Marker key={`visit-${p.id}`} position={{ lat: p.latitude!, lng: p.longitude! }}
+            title={`${p.visited ? "Visitado" : "Por visitar"}: ${p.title}`} label={{ text: "♥", color: "white" }}
+            zIndex={selectedVisit?.id === p.id ? 1100 : undefined}
+            onClick={() => { setSelectedVisit(p); setSelectedSpot(null); setPeekSpot(null); setSelectedPernocta(null); setViewMode("map"); }} />)}
           {selectedPernocta && (
             <InfoWindow position={{ lat: selectedPernocta.latitude, lng: selectedPernocta.longitude }} onCloseClick={() => setSelectedPernocta(null)}>
                 <div style={{ fontFamily: "var(--font)", padding: 2 }}>
@@ -540,6 +618,12 @@ function MapContent({ spots, pernoctas = [] }: { spots: any[]; pernoctas?: any[]
           )}
         </GoogleMap>
 
+        {showVisits && selectedVisit && !selectedSpot && viewMode === "map" && (
+          <div className="visit-map-preview" role="region" aria-label="Lugar seleccionado" onKeyDown={event => { if (event.key === "Escape") setSelectedVisit(null); }}>
+            <VisitMapCard place={selectedVisit} onClose={() => setSelectedVisit(null)} onOpenDetail={() => openVisitDetail(selectedVisit)} />
+          </div>
+        )}
+
         {/* Peek card (ambas vistas) */}
         {peekSpot && !selectedSpot && (
           <PeekCard spot={peekSpot} onClose={() => setPeekSpot(null)}
@@ -548,8 +632,9 @@ function MapContent({ spots, pernoctas = [] }: { spots: any[]; pernoctas?: any[]
 
         {/* MÓVIL: lista como overlay */}
         {viewMode === "list" && (
-          <div className="map-mobile-only" style={{ position: "absolute", inset: 0, zIndex: 500, background: "var(--bg)", paddingTop: 90 }}>
-            <SpotList spots={visibleSpots} onSpotClick={s => setSelectedSpot(s)} />
+          <div className="map-mobile-only" style={{ position: "absolute", inset: 0, zIndex: 500, background: "var(--bg)", paddingTop: "calc(112px + env(safe-area-inset-top, 0px))", overflowY: "auto", flexDirection: "column" }}>
+            {renderVisitList()}
+            {(visibleSpots.length > 0 || visibleVisits.length === 0) && <SpotList spots={visibleSpots} onSpotClick={s => setSelectedSpot(s)} />}
           </div>
         )}
 
@@ -588,13 +673,12 @@ function MapContent({ spots, pernoctas = [] }: { spots: any[]; pernoctas?: any[]
             </div>
           </div>
         </div>
-        {/* Espaciador para que el mapa no quede tapado por la barra fija en móvil */}
-        <div className="map-mobile-only" style={{ height: 90 }} />
       </div>
 
       {/* ══ Overlays compartidos ═══════════════════════════════════════════ */}
 
       {/* Detalle de lugar */}
+      {detailVisit && <VisitPlaceDetail key={detailVisit.id} place={detailVisit} types={visitTypes} userId={userId} isAdmin={isAdmin} onClose={() => setDetailVisitId(null)} />}
       {selectedSpot && (
         <SpotDetail spot={selectedSpot} onClose={() => setSelectedSpot(null)}
           onEdit={s => { setEditingSpot(s); setSelectedSpot(null); }} />
@@ -639,6 +723,16 @@ function MapContent({ spots, pernoctas = [] }: { spots: any[]; pernoctas?: any[]
 
               {/* Preferencias rápidas */}
               <div>
+                <p className="label">Mostrar en el mapa</p>
+                <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 10 }}>
+                  <label><input type="checkbox" checked={showVisits} onChange={e => setShowVisits(e.target.checked)} /> Sitios por visitar</label>
+                  <label><input type="checkbox" checked={showSpots} onChange={e => setShowSpots(e.target.checked)} /> Lugares de camper</label>
+                  <label><input type="checkbox" checked={showPernoctas} onChange={e => setShowPernoctas(e.target.checked)} /> Pernoctas registradas</label>
+                  <Link href="/por-visitar" style={{ color: "var(--primary)", fontSize: 13 }}>Ver todos los pendientes, también sin ubicación</Link>
+                </div>
+              </div>
+              <div>
+                <p className="label" style={{ marginBottom: 8 }}>Filtros de lugares de camper</p>
                 <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                   {[
                     { id: "fav", label: "Solo favoritos",       icon: "heart" as const, active: showFavoritesOnly, toggle: () => setShowFavoritesOnly(v => !v) },
@@ -754,6 +848,9 @@ function MapContent({ spots, pernoctas = [] }: { spots: any[]; pernoctas?: any[]
                   setShowFavoritesOnly(false);
                   setAptosPernoctar(false);
                   setSoloGratuitos(false);
+                  setShowVisits(true);
+                  setShowSpots(!visitsOnly);
+                  setShowPernoctas(false);
                 }}
               >
                 Limpiar
@@ -763,7 +860,7 @@ function MapContent({ spots, pernoctas = [] }: { spots: any[]; pernoctas?: any[]
                 style={{ flex: 2 }}
                 onClick={() => setShowFilters(false)}
               >
-                Ver resultados ({visibleSpots.length})
+                Ver resultados ({visibleSpots.length + visibleVisits.length})
               </button>
             </div>
           </div>

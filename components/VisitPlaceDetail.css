@@ -1,0 +1,21 @@
+.visit-detail-dialog { position: fixed; inset: 0; width: 100%; max-width: none; height: 100dvh; max-height: none; margin: 0; padding: 0; border: 0; background: transparent; color: var(--text); overflow: hidden; }
+.visit-detail-dialog::backdrop { background: rgba(0, 0, 0, .3); backdrop-filter: blur(1px); }
+.visit-detail-panel { width: 100%; max-width: 420px; height: 100%; margin-left: auto; background: var(--surface); box-shadow: var(--shadow-lg); display: flex; flex-direction: column; }
+.visit-detail-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0; font-size: 15px; font-weight: 800; }
+.visit-detail-header .iconbtn { width: 36px; height: 36px; }
+.visit-detail-content { flex: 1; min-height: 0; overflow-y: auto; padding: 24px 20px; }
+.visit-detail-content > .visit-map-icon { margin-bottom: 16px; }
+.visit-detail-content .visit-map-status { margin: 0; }
+.visit-detail-content h2 { font-size: 26px; font-weight: 800; letter-spacing: -.02em; line-height: 1.2; margin: 14px 0 24px; overflow-wrap: anywhere; }
+.visit-detail-section { padding: 18px 0; border-top: 1px solid var(--border); }
+.visit-detail-section h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; font-size: 14px; font-weight: 800; }
+.visit-detail-section h3 svg { color: var(--primary); }
+.visit-detail-section p { font-size: 14px; line-height: 1.6; overflow-wrap: anywhere; margin: 0; }
+.visit-detail-section .visit-detail-coordinates { margin-top: 6px; font-size: 12px; color: var(--muted); }
+.visit-detail-notes { white-space: pre-wrap; }
+.visit-detail-source { color: var(--primary); font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+.visit-detail-footer { padding: 16px 20px max(20px, env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--border); flex-shrink: 0; }
+.visit-detail-footer a { text-decoration: none; }
+.visit-detail-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.visit-detail-actions > .btn { flex: 1 1 150px; }
+.visit-detail-content > .visit-panel { margin: 16px 0 0; padding: 0; border: 0; box-shadow: none; }

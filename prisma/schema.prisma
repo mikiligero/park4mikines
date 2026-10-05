@@ -27,6 +27,34 @@ model User {
   checklistItems      ChecklistItem[]
   checklistCategories ChecklistCategory[]
   pernoctas           Pernocta[]
+  visitPlaces        VisitPlace[]
+}
+
+model VisitType {
+  id         Int          @id @default(autoincrement())
+  name       String
+  nameKey    String       @unique
+  isActive   Boolean      @default(true)
+  places     VisitPlace[]
+}
+
+model VisitPlace {
+  id           Int       @id @default(autoincrement())
+  title        String
+  notes        String?
+  sourceUrl    String?
+  locationName String?
+  latitude     Float?
+  longitude    Float?
+  visited      Boolean   @default(false)
+  typeId       Int?
+  type         VisitType? @relation(fields: [typeId], references: [id], onDelete: SetNull)
+  authorId     Int
+  author       User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([visited, typeId])
 }
 
 model Spot {

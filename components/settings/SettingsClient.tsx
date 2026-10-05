@@ -6,9 +6,11 @@ import AppearanceSettings from "./AppearanceSettings";
 import MaintenanceSettings from "./MaintenanceSettings";
 import BackupSettings from "./BackupSettings";
 import ListSettings from "./ListSettings";
+import VisitTypeSettings from "./VisitTypeSettings";
+import type { VisitTypeOption } from "@/lib/visits";
 import { Icon, type IconName } from "@/components/Icon";
 
-type TabId = "profile" | "appearance" | "lists" | "maintenance" | "backups";
+type TabId = "profile" | "appearance" | "lists" | "visits" | "maintenance" | "backups";
 
 interface Tab {
     id: TabId;
@@ -19,6 +21,7 @@ interface Tab {
 }
 
 const ALL_TABS: Tab[] = [
+    { id: "visits", name: "Tipos de Por visitar", icon: "pin", activeBg: "var(--primary-soft)", activeColor: "var(--primary-soft-text)" },
     { id: "profile",     name: "Mi Perfil",         icon: "user",     activeBg: "var(--primary-soft)",          activeColor: "var(--primary-soft-text)" },
     { id: "appearance",  name: "Apariencia",         icon: "monitor",  activeBg: "rgba(80,72,229,0.10)",         activeColor: "#4338CA" },
     { id: "lists",       name: "Listas",             icon: "list",     activeBg: "rgba(80,72,229,0.10)",         activeColor: "#4338CA" },
@@ -26,7 +29,7 @@ const ALL_TABS: Tab[] = [
     { id: "backups",     name: "Copia de seguridad", icon: "database", activeBg: "var(--success-soft)",          activeColor: "var(--success)" },
 ];
 
-export default function SettingsClient({ user, isAdmin, lists }: { user: any; isAdmin: boolean; lists?: any[] }) {
+export default function SettingsClient({ user, isAdmin, lists, visitTypes = [] }: { user: any; isAdmin: boolean; lists?: any[]; visitTypes?: VisitTypeOption[] }) {
     const [activeTab, setActiveTab] = useState<TabId>("profile");
 
     const tabs = isAdmin
@@ -77,6 +80,7 @@ export default function SettingsClient({ user, isAdmin, lists }: { user: any; is
             {activeTab === "profile"     && <ProfileSettings user={user} />}
             {activeTab === "appearance"  && <AppearanceSettings />}
             {activeTab === "lists"       && isAdmin && lists && <ListSettings lists={lists} />}
+            {activeTab === "visits"      && isAdmin && <VisitTypeSettings types={visitTypes} />}
             {activeTab === "maintenance" && <MaintenanceSettings />}
             {activeTab === "backups"     && <BackupSettings />}
 

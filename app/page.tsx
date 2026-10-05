@@ -17,7 +17,7 @@ export default async function DashboardPage() {
     const timeGreeting = hour < 12 ? "Buenos días" : hour < 20 ? "Buenas tardes" : "Buenas noches";
     const name = String(session.name || session.username);
 
-    const [lists, pernoctaCount, favorites] = await Promise.all([
+    const [lists, pernoctaCount, favorites, pendingVisitCount] = await Promise.all([
         prisma.configurableList.findMany({
             where: { isVisible: true },
             orderBy: { createdAt: "asc" },
@@ -29,6 +29,7 @@ export default async function DashboardPage() {
             take: 8,
             orderBy: { updatedAt: "desc" },
         }),
+        prisma.visitPlace.count({ where: { visited: false } }),
     ]);
 
     return (
@@ -110,6 +111,13 @@ export default async function DashboardPage() {
 
                     {/* ── Grid de acciones ── */}
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12, marginBottom: 28 }}>
+                        <ActionCard
+                            href="/por-visitar"
+                            icon="MapPin"
+                            iconBg="#C2552E"
+                            title="Por visitar"
+                            sub={pendingVisitCount ? `${pendingVisitCount} pendientes` : "Ideas para escapadas"}
+                        />
                         <ActionCard
                             href="/pois"
                             icon="Map"

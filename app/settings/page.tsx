@@ -15,6 +15,7 @@ export default async function SettingsPage() {
     if (!user) redirect("/login");
 
     const lists = await prisma.configurableList.findMany({ orderBy: { createdAt: "asc" } });
+    const visitTypes = await prisma.visitType.findMany({ orderBy: { id: "asc" } });
 
     return (
         <div style={{ minHeight: "100vh", background: "var(--bg)", paddingBottom: 80 }}>
@@ -37,7 +38,7 @@ export default async function SettingsPage() {
             </div>
 
             <main style={{ maxWidth: 680, margin: "0 auto", padding: "20px 16px 0" }}>
-                <SettingsClient user={user} isAdmin={session.role === "ADMIN"} lists={lists} />
+                <SettingsClient user={user} isAdmin={session.role === "ADMIN"} lists={lists} visitTypes={visitTypes} />
             </main>
         </div>
     );

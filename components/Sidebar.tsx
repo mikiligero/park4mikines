@@ -42,6 +42,7 @@ export default function Sidebar() {
 
     const navItems: NavItem[] = [
         { label: "Explorar",  href: "/pois",      icon: "map"      },
+        { label: "Por visitar", href: "/por-visitar", icon: "pin" },
         { label: "Pernoctas", href: "/pernoctas",  icon: "moon"     },
         ...lists.map(l => ({
             label: l.name,

@@ -22,9 +22,11 @@ export async function createBackup() {
         const spotServices = await prisma.spotService.findMany();
         const favorites = await prisma.favorite.findMany();
         const checklistItems = await prisma.checklistItem.findMany();
+        const visitTypes = await prisma.visitType.findMany();
+        const visitPlaces = await prisma.visitPlace.findMany();
 
         const backupData = {
-            version: 1,
+            version: 2,
             timestamp: new Date().toISOString(),
             data: {
                 users,
@@ -33,7 +35,9 @@ export async function createBackup() {
                 services,
                 spotServices,
                 favorites,
-                checklistItems
+                checklistItems,
+                visitTypes,
+                visitPlaces,
             }
         };
 
@@ -114,6 +118,9 @@ export async function restoreBackup(formData: FormData) {
         await prisma.$transaction(async (tx) => {
             // Delete everything first - Order matters for foreign keys
             log("Limpiando base de datos actual...");
+            await tx.visitPlace.deleteMany();
+            // Older backups have no visit types: retain the installed catalogue.
+            if (Array.isArray(data.visitTypes)) await tx.visitType.deleteMany();
             await tx.checklistItem.deleteMany();
             await tx.favorite.deleteMany();
             await tx.spotService.deleteMany();
@@ -127,6 +134,17 @@ export async function restoreBackup(formData: FormData) {
             if (data.users && data.users.length > 0) {
                 log(`Restaurando ${data.users.length} usuarios...`);
                 await tx.user.createMany({ data: data.users });
+            }
+
+            // Services
+            if (data.visitTypes?.length) {
+                await tx.visitType.createMany({ data: data.visitTypes });
+            }
+            if (data.visitPlaces?.length) {
+                log(`Restaurando ${data.visitPlaces.length} lugares de Por visitar...`);
+                await tx.visitPlace.createMany({ data: data.visitPlaces.map((place: { createdAt: string; updatedAt: string }) => ({
+                    ...place, createdAt: new Date(place.createdAt), updatedAt: new Date(place.updatedAt),
+                })) });
             }
 
             // Services
