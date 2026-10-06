@@ -8,6 +8,11 @@ export const visitPlaceSchema = z.object({
         try { return ["http:", "https:"].includes(new URL(value).protocol); }
         catch { return false; }
     }, "Introduce un enlace completo que empiece por https:// o http://.").default(""),
+    imageUrl: z.string().trim().max(2000).refine(value => {
+        if (!value) return true;
+        try { return ["http:", "https:"].includes(new URL(value).protocol); }
+        catch { return false; }
+    }, "Introduce una URL de imagen que empiece por https:// o http://.").default(""),
     locationName: z.string().trim().max(300).default(""),
     latitude: z.number().min(-90).max(90).nullable().default(null),
     longitude: z.number().min(-180).max(180).nullable().default(null),
@@ -30,7 +35,7 @@ export function visitTypeKey(name: string) {
 export type VisitPlaceInput = z.input<typeof visitPlaceSchema>;
 export type VisitTypeOption = { id: number; name: string; isActive: boolean };
 export type VisitPlaceItem = {
-    id: number; title: string; notes: string | null; sourceUrl: string | null;
+    id: number; title: string; notes: string | null; sourceUrl: string | null; imageUrl: string | null;
     locationName: string | null; latitude: number | null; longitude: number | null;
     visited: boolean; typeId: number | null; type: VisitTypeOption | null;
     authorId: number;

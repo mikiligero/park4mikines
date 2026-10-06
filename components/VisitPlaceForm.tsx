@@ -3,6 +3,7 @@
 import { useEffect, useId, useState } from "react";
 import { saveVisitPlace } from "@/lib/visit-actions";
 import { visitTypeKey, type VisitPlaceItem, type VisitTypeOption } from "@/lib/visits";
+import VisitPlaceImage from "@/components/VisitPlaceImage";
 
 type PlaceResult = { displayName: string; lat: number; lng: number };
 
@@ -19,6 +20,7 @@ export default function VisitPlaceForm({ place, types, onSaved, onCancel }: {
     const [latitude, setLatitude] = useState(place?.latitude?.toString() ?? "");
     const [longitude, setLongitude] = useState(place?.longitude?.toString() ?? "");
     const [typeName, setTypeName] = useState(place?.type?.name ?? "");
+    const [imageUrl, setImageUrl] = useState(place?.imageUrl || "");
     const typeListId = useId();
     const matchedType = typeName.trim() ? types.find(type => visitTypeKey(type.name) === visitTypeKey(typeName)) : undefined;
     const hiddenType = matchedType && !matchedType.isActive && matchedType.id !== place?.typeId;
@@ -49,6 +51,7 @@ export default function VisitPlaceForm({ place, types, onSaved, onCancel }: {
         try {
             const result = await saveVisitPlace(place?.id ?? null, {
                 title: data.get("title"), notes: data.get("notes"), sourceUrl: data.get("sourceUrl"),
+                imageUrl,
                 typeId: matchedType?.id ?? null,
                 typeName: matchedType ? "" : typeName.trim(),
                 locationName, latitude: latitude.trim() ? Number(latitude) : null,
@@ -67,6 +70,8 @@ export default function VisitPlaceForm({ place, types, onSaved, onCancel }: {
             <fieldset disabled={busy} className="visit-form-fields">
                 <label>Nombre del lugar<input className="input" name="title" defaultValue={place?.title} maxLength={200} required autoFocus placeholder="Ese sitio al que queremos ir" /></label>
                 <label>Enlace original <span className="visit-muted">(opcional)</span><input className="input" name="sourceUrl" type="url" defaultValue={place?.sourceUrl || ""} maxLength={2000} placeholder="https://…" /><small className="visit-muted">Instagram, TikTok, Wikiloc, una web…</small></label>
+                <label>URL de la foto <span className="visit-muted">(opcional)</span><input className="input" name="imageUrl" type="url" value={imageUrl} onChange={event => setImageUrl(event.target.value)} maxLength={2000} placeholder="https://…/foto.jpg" /><small className="visit-muted">Pega el enlace directo a una imagen para mostrarla en la ficha. Déjalo vacío para quitar la foto.</small></label>
+                {/^https?:\/\//i.test(imageUrl.trim()) && <VisitPlaceImage imageUrl={imageUrl.trim()} title={place?.title || "este lugar"} className="visit-place-image--preview" />}
                 <label>Tipo de lugar
                     <input className="input" name="typeName" list={typeListId} value={typeName} onChange={event => setTypeName(event.target.value)} maxLength={80} autoComplete="off" placeholder="Elige un tipo o escribe uno nuevo" aria-describedby={`${typeListId}-help`} />
                     <datalist id={typeListId}>

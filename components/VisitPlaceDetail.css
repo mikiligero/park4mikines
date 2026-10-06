@@ -16,6 +16,5 @@
 .visit-detail-source { color: var(--primary); font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
 .visit-detail-footer { padding: 16px 20px max(20px, env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--border); flex-shrink: 0; }
 .visit-detail-footer a { text-decoration: none; }
-.visit-detail-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
-.visit-detail-actions > .btn { flex: 1 1 150px; }
+.visit-detail-actions { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
 .visit-detail-content > .visit-panel { margin: 16px 0 0; padding: 0; border: 0; box-shadow: none; }

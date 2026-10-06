@@ -43,6 +43,7 @@ model VisitPlace {
   title        String
   notes        String?
   sourceUrl    String?
+  imageUrl     String?
   locationName String?
   latitude     Float?
   longitude    Float?

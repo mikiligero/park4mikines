@@ -4,7 +4,8 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/Icon";
 import VisitPlaceForm from "@/components/VisitPlaceForm";
-import { setVisitPlaceVisited } from "@/lib/visit-actions";
+import VisitPlaceImage from "@/components/VisitPlaceImage";
+import { deleteVisitPlace, setVisitPlaceVisited } from "@/lib/visit-actions";
 import type { VisitPlaceItem, VisitTypeOption } from "@/lib/visits";
 import "./VisitPlaceDetail.css";
 
@@ -21,6 +22,17 @@ export default function VisitPlaceDetail({ place, types, userId, isAdmin, onClos
     const located = place.latitude !== null && place.longitude !== null;
     const canEdit = isAdmin || place.authorId === userId;
     const saving = busy || refreshing;
+
+    async function removePlace() {
+        if (saving || !window.confirm(`¿Eliminar «${place.title}»? Esta acción no se puede deshacer.`)) return;
+        setBusy(true); setError(""); setMessage("");
+        try {
+            const result = await deleteVisitPlace(place.id);
+            if (result.success) { onClose(); router.refresh(); }
+            else setError(result.error || "No se pudo eliminar el lugar.");
+        } catch { setError("No se ha podido conectar. Inténtalo de nuevo."); }
+        finally { setBusy(false); }
+    }
 
     async function changeStatus() {
         if (saving) return;
@@ -54,6 +66,7 @@ export default function VisitPlaceDetail({ place, types, userId, isAdmin, onClos
                 <button className="iconbtn iconbtn-ghost" onClick={onClose} disabled={saving} aria-label="Cerrar ficha del lugar" autoFocus><Icon name="close" size={20} /></button>
             </header>
             <div className="visit-detail-content">
+                {!editing && <VisitPlaceImage imageUrl={place.imageUrl} title={place.title} className="visit-place-image--detail" />}
                 <div className="visit-map-icon"><Icon name={place.visited ? "check" : "pin"} size={24} /></div>
                 <div className="visit-actions">
                     <span className="visit-tag">{place.type?.name || "Sin clasificar"}</span>
@@ -82,8 +95,11 @@ export default function VisitPlaceDetail({ place, types, userId, isAdmin, onClos
             </div>
             {!editing && (located || canEdit) && <footer className="visit-detail-footer">
                 {canEdit && <div className="visit-detail-actions">
-                    <button className="btn btn-soft btn-md" disabled={saving} onClick={() => { setEditing(true); setError(""); setMessage(""); }}><Icon name="edit" size={16} />Editar lugar</button>
                     <button className="btn btn-primary btn-md" disabled={saving} onClick={() => void changeStatus()}>{saving ? "Guardando…" : place.visited ? "Volver a pendientes" : "Marcar visitado"}</button>
+                    <div className="visit-edit-actions">
+                    <button className="btn btn-soft btn-md" disabled={saving} onClick={() => { setEditing(true); setError(""); setMessage(""); }}><Icon name="edit" size={16} />Editar lugar</button>
+                    <button className="btn btn-danger btn-md" disabled={saving} onClick={() => void removePlace()}>Eliminar</button>
+                    </div>
                 </div>}
                 {located && <a className="btn btn-soft btn-md btn-full" href={`https://www.google.com/maps/dir/?api=1&destination=${place.latitude},${place.longitude}`} target="_blank" rel="noopener noreferrer"><Icon name="navigate" size={18} />Cómo llegar</a>}
             </footer>}

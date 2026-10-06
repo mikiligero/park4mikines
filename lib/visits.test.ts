@@ -9,8 +9,17 @@ describe("Por visitar: datos de un lugar", () => {
     });
     it("permite guardar solo un nombre, sin inventar coordenadas", () => {
         expect(visitPlaceSchema.parse({ title: "  Un manantial  " })).toMatchObject({
-            title: "Un manantial", latitude: null, longitude: null, typeId: null,
+            title: "Un manantial", latitude: null, longitude: null, typeId: null, imageUrl: "",
         });
+    });
+    it("acepta fotos opcionales por URL, incluidas las que no tienen extensión", () => {
+        for (const imageUrl of ["", "https://example.com/photo?id=1", "http://example.com/foto.jpg"]) {
+            expect(visitPlaceSchema.safeParse({ title: "Lugar", imageUrl }).success).toBe(true);
+        }
+        expect(visitPlaceSchema.parse({ title: "Lugar", imageUrl: "  https://example.com/foto.jpg  " }).imageUrl).toBe("https://example.com/foto.jpg");
+        for (const imageUrl of ["javascript:alert(1)", "data:image/svg+xml,test", "ftp://example.com/foto.jpg", "foto.jpg", "https://example.com/" + "x".repeat(2000)]) {
+            expect(visitPlaceSchema.safeParse({ title: "Lugar", imageUrl }).success).toBe(false);
+        }
     });
     it("rechaza nombres vacíos y enlaces que ejecutan código", () => {
         expect(visitPlaceSchema.safeParse({ title: "  " }).success).toBe(false);

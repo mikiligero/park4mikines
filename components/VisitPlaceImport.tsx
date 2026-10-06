@@ -2,19 +2,21 @@
 
 import { useMemo, useRef, useState } from "react";
 import { importVisitPlaces } from "@/lib/visit-actions";
-import { MAX_VISIT_IMPORT_PLACES, MAX_VISIT_IMPORT_LENGTH, VISIT_IMPORT_EXAMPLE, parseVisitImport } from "@/lib/visit-import";
+import { MAX_VISIT_IMPORT_PLACES, MAX_VISIT_IMPORT_LENGTH, getVisitImportExample, parseVisitImport } from "@/lib/visit-import";
+import type { VisitTypeOption } from "@/lib/visits";
 
-export default function VisitPlaceImport({ onSaved, onCancel }: { onSaved: (count: number) => void; onCancel: () => void }) {
+export default function VisitPlaceImport({ types, onSaved, onCancel }: { types: VisitTypeOption[]; onSaved: (count: number) => void; onCancel: () => void }) {
     const [text, setText] = useState("");
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState("");
     const [copyMessage, setCopyMessage] = useState("");
     const exampleRef = useRef<HTMLTextAreaElement>(null);
     const preview = useMemo(() => parseVisitImport(text), [text]);
+    const example = useMemo(() => getVisitImportExample(types), [types]);
 
     async function copyExample() {
         try {
-            await navigator.clipboard.writeText(VISIT_IMPORT_EXAMPLE);
+            await navigator.clipboard.writeText(example);
             setCopyMessage("Ejemplo copiado.");
         } catch {
             exampleRef.current?.focus();
@@ -41,8 +43,9 @@ export default function VisitPlaceImport({ onSaved, onCancel }: { onSaved: (coun
         <details className="visit-import-example" open>
             <summary>Formato de ejemplo</summary>
             <p className="visit-muted">Las coordenadas son números o <code>null</code>. Usa <code>typeName</code> para elegir o crear un tipo. <code>visited</code> admite <code>true</code> o <code>false</code>; si lo omites, el sitio queda pendiente.</p>
+            <p className="visit-muted">Copia el ejemplo a un LLM: te preguntará sobre qué sitios o zona quieres las fichas. Los comentarios incluyen el prompt y las categorías disponibles; puedes dejarlos al importar. <code>imageUrl</code> es opcional: pega el enlace directo a la foto para mostrarla en la ficha.</p>
             <label htmlFor="visit-import-example">JSON de ejemplo</label>
-            <textarea ref={exampleRef} id="visit-import-example" className="input visit-json" value={VISIT_IMPORT_EXAMPLE} readOnly rows={6} spellCheck={false} />
+            <textarea ref={exampleRef} id="visit-import-example" className="input visit-json" value={example} readOnly rows={12} spellCheck={false} />
             <button className="btn btn-soft btn-sm" type="button" onClick={() => void copyExample()}>Copiar ejemplo JSON</button>
             <p role="status" className="visit-muted">{copyMessage}</p>
         </details>

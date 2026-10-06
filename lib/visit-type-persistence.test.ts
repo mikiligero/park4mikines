@@ -20,9 +20,11 @@ import { importVisitPlaces, saveVisitPlace } from "./visit-actions";
 beforeAll(async () => {
     await prisma.$executeRawUnsafe('CREATE TABLE "User" ("id" INTEGER PRIMARY KEY)');
     await prisma.$executeRawUnsafe('INSERT INTO "User" ("id") VALUES (7)');
-    const migration = await readFile(path.join(process.cwd(), "prisma/migrations/20260918120000_add_visit_places/migration.sql"), "utf8");
-    for (const statement of migration.split(";").map(sql => sql.trim()).filter(Boolean)) {
-        await prisma.$executeRawUnsafe(statement);
+    for (const name of ["20260918120000_add_visit_places", "20261006120000_add_visit_place_image_url"]) {
+        const migration = await readFile(path.join(process.cwd(), `prisma/migrations/${name}/migration.sql`), "utf8");
+        for (const statement of migration.split(";").map(sql => sql.trim()).filter(Boolean)) {
+            await prisma.$executeRawUnsafe(statement);
+        }
     }
 });
 
@@ -32,6 +34,18 @@ afterAll(async () => {
 });
 
 describe("Guardado de tipos y lugares en SQLite", () => {
+    it("guarda, importa y permite cambiar o quitar la foto de un lugar", async () => {
+        expect(await saveVisitPlace(null, { title: "Sitio con foto", imageUrl: "https://example.com/original.jpg" })).toEqual({ success: true });
+        const place = await prisma.visitPlace.findFirstOrThrow({ where: { title: "Sitio con foto" } });
+        expect(place.imageUrl).toBe("https://example.com/original.jpg");
+        expect(await saveVisitPlace(place.id, { title: place.title, imageUrl: "https://example.com/nueva.jpg" })).toEqual({ success: true });
+        expect((await prisma.visitPlace.findUniqueOrThrow({ where: { id: place.id } })).imageUrl).toBe("https://example.com/nueva.jpg");
+        expect(await saveVisitPlace(place.id, { title: place.title, imageUrl: "" })).toEqual({ success: true });
+        expect((await prisma.visitPlace.findUniqueOrThrow({ where: { id: place.id } })).imageUrl).toBe("");
+        expect(await importVisitPlaces('// Foto de referencia\n{"title":"Foto importada","imageUrl":"https://example.com/importada.jpg"}')).toEqual({ success: true, count: 1 });
+        expect((await prisma.visitPlace.findFirstOrThrow({ where: { title: "Foto importada" } })).imageUrl).toBe("https://example.com/importada.jpg");
+        await prisma.visitPlace.deleteMany({ where: { title: { in: ["Sitio con foto", "Foto importada"] } } });
+    });
     it("crea el tipo, lo reutiliza por nombre y permite otro nuevo al editar", async () => {
         expect((await saveVisitPlace(null, { title: "Primer jardín", typeName: " Jardín   botánico " })).success).toBe(true);
         expect((await saveVisitPlace(null, { title: "Segundo jardín", typeName: "JARDIN BOTANICO" })).success).toBe(true);

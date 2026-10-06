@@ -4,7 +4,7 @@ import { Prisma } from "@prisma/client";
 const { session, db } = vi.hoisted(() => ({
     session: vi.fn(),
     db: {
-        visitPlace: { findMany: vi.fn(), findUnique: vi.fn(), create: vi.fn(), update: vi.fn(), updateMany: vi.fn() },
+        visitPlace: { findMany: vi.fn(), findUnique: vi.fn(), create: vi.fn(), update: vi.fn(), updateMany: vi.fn(), deleteMany: vi.fn() },
         visitType: { findUnique: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn(), upsert: vi.fn() },
         $transaction: vi.fn(),
     },
@@ -12,7 +12,7 @@ const { session, db } = vi.hoisted(() => ({
 vi.mock("@/lib/auth", () => ({ getSession: session }));
 vi.mock("@/lib/prisma", () => ({ default: db }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
-import { deleteVisitType, getVisitPlaces, importVisitPlaces, saveVisitPlace, saveVisitType, setVisitPlaceVisited, setVisitTypeActive } from "./visit-actions";
+import { deleteVisitPlace, deleteVisitType, getVisitPlaces, importVisitPlaces, saveVisitPlace, saveVisitType, setVisitPlaceVisited, setVisitTypeActive } from "./visit-actions";
 
 beforeEach(() => {
     vi.resetAllMocks();
@@ -108,6 +108,35 @@ describe("Permisos y persistencia de Por visitar", () => {
     it("devuelve un error recuperable si falla el guardado", async () => {
         db.visitPlace.create.mockRejectedValue(new Error("DB offline"));
         expect((await saveVisitPlace(null, { title: "Lugar" })).success).toBe(false);
+    });
+});
+
+describe("Eliminación de sitios", () => {
+    it("requiere sesión y un identificador válido antes de borrar", async () => {
+        session.mockResolvedValue(null);
+        expect((await deleteVisitPlace(4)).success).toBe(false);
+        session.mockResolvedValue({ userId: 7, role: "USER" });
+        for (const id of [0, -1, 1.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1]) {
+            expect((await deleteVisitPlace(id)).success).toBe(false);
+        }
+        expect(db.visitPlace.deleteMany).not.toHaveBeenCalled();
+    });
+    it("restringe el borrado al autor y rechaza lugares ajenos o inexistentes", async () => {
+        db.visitPlace.deleteMany.mockResolvedValue({ count: 1 });
+        expect((await deleteVisitPlace(4)).success).toBe(true);
+        expect(db.visitPlace.deleteMany).toHaveBeenCalledWith({ where: { id: 4, authorId: 7 } });
+        db.visitPlace.deleteMany.mockResolvedValue({ count: 0 });
+        expect((await deleteVisitPlace(5)).success).toBe(false);
+    });
+    it("permite al administrador borrar un sitio compartido", async () => {
+        session.mockResolvedValue({ userId: 1, role: "ADMIN" });
+        db.visitPlace.deleteMany.mockResolvedValue({ count: 1 });
+        expect((await deleteVisitPlace(4)).success).toBe(true);
+        expect(db.visitPlace.deleteMany).toHaveBeenCalledWith({ where: { id: 4 } });
+    });
+    it("informa del fallo sin declarar eliminado el sitio", async () => {
+        db.visitPlace.deleteMany.mockRejectedValue(new Error("DB offline"));
+        expect((await deleteVisitPlace(4)).success).toBe(false);
     });
 });
 

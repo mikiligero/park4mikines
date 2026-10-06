@@ -2,6 +2,7 @@
 
 import { Icon } from "@/components/Icon";
 import type { VisitPlaceItem } from "@/lib/visits";
+import VisitPlaceImage from "@/components/VisitPlaceImage";
 
 type Props = {
     place: VisitPlaceItem;
@@ -16,6 +17,7 @@ export default function VisitMapCard({ place, selected = false, onSelect, onClos
 
     return <article className={`visit-map-card${selected ? " is-selected" : ""}${onClose ? " is-preview" : ""}`} aria-label={`Lugar: ${place.title}`}>
         {onClose && <div className="visit-map-handle" aria-hidden="true" />}
+        <VisitPlaceImage imageUrl={place.imageUrl} title={place.title} className="visit-place-image--map" />
         <div className="visit-map-card-heading">
             <div className="visit-map-icon"><Icon name={place.visited ? "check" : "pin"} size={24} /></div>
             <div className="visit-map-heading-text">

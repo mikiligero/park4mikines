@@ -6,7 +6,8 @@ import Link from "next/link";
 import { Icon } from "@/components/Icon";
 import VisitPlaceForm from "@/components/VisitPlaceForm";
 import VisitPlaceImport from "@/components/VisitPlaceImport";
-import { setVisitPlaceVisited } from "@/lib/visit-actions";
+import VisitPlaceImage from "@/components/VisitPlaceImage";
+import { deleteVisitPlace, setVisitPlaceVisited } from "@/lib/visit-actions";
 import { visitTypeKey, type VisitPlaceItem, type VisitTypeOption } from "@/lib/visits";
 
 export default function VisitPlaces({ places, types, userId, isAdmin, initialStatus = "pending" }: {
@@ -31,7 +32,21 @@ export default function VisitPlaces({ places, types, userId, isAdmin, initialSta
         visitTypeKey(`${place.title} ${place.notes || ""} ${place.locationName || ""} ${place.type?.name || ""}`).includes(visitTypeKey(query))
     );
 
+    async function removePlace(place: VisitPlaceItem) {
+        if (busyId !== null || !window.confirm(`¿Eliminar «${place.title}»? Esta acción no se puede deshacer.`)) return;
+        setBusyId(place.id); setError(""); setMessage("");
+        try {
+            const result = await deleteVisitPlace(place.id);
+            if (result.success) {
+                if (typeof form === "object" && form?.id === place.id) setForm(null);
+                setMessage("Lugar eliminado."); router.refresh();
+            } else setError(result.error || "No se pudo eliminar el lugar.");
+        } catch { setError("No se ha podido conectar. Inténtalo de nuevo."); }
+        finally { setBusyId(null); }
+    }
+
     async function changeStatus(place: VisitPlaceItem) {
+        if (busyId !== null) return;
         setBusyId(place.id); setError(""); setMessage("");
         try {
             const result = await setVisitPlaceVisited(place.id, !place.visited);
@@ -62,7 +77,7 @@ export default function VisitPlaces({ places, types, userId, isAdmin, initialSta
                 <button className="btn btn-success btn-md" onClick={() => { setForm("new"); setMessage(""); }}><Icon name="plus" size={18} />Nuevo lugar</button>
                 <button className="btn btn-soft btn-md" onClick={() => { setForm("import"); setMessage(""); }}>Importar JSON</button>
             </div>}
-        {form === "import" && <VisitPlaceImport onCancel={() => setForm(null)} onSaved={count => { setForm(null); setStatus("all"); setQuery(""); setTypeId(""); setMessage(`${count} ${count === 1 ? "sitio importado" : "sitios importados"}.`); router.refresh(); }} />}
+        {form === "import" && <VisitPlaceImport types={types} onCancel={() => setForm(null)} onSaved={count => { setForm(null); setStatus("all"); setQuery(""); setTypeId(""); setMessage(`${count} ${count === 1 ? "sitio importado" : "sitios importados"}.`); router.refresh(); }} />}
         {form !== null && form !== "import" && <VisitPlaceForm key={form === "new" ? "new" : form.id} place={form === "new" ? null : form} types={types} onCancel={() => setForm(null)} onSaved={() => { setForm(null); setMessage("Lugar guardado."); router.refresh(); }} />}
         <section className="visit-collection" aria-labelledby="visit-collection-title">
         <h2 id="visit-collection-title" className="visit-section-title">Vuestros lugares</h2>
@@ -75,6 +90,7 @@ export default function VisitPlaces({ places, types, userId, isAdmin, initialSta
         <p role="status" className="visit-muted visit-feedback">{message}</p>
         {!filtered.length && <div className="visit-panel visit-empty"><Icon name="pin" size={32} /><h2>{places.length ? "No hay lugares con estos filtros" : "La próxima escapada puede empezar con un enlace"}</h2><p className="visit-muted">{places.length ? "Prueba otro tipo, estado o búsqueda." : "Guarda una ruta, un manantial o ese pueblo que acabáis de ver en redes. La ubicación puede esperar."}</p></div>}
         <div className="visit-grid">{filtered.map(place => <article id={`lugar-${place.id}`} key={place.id} className="visit-panel visit-card">
+            <VisitPlaceImage imageUrl={place.imageUrl} title={place.title} />
             <div className="visit-actions"><span className="visit-tag">{place.type?.name || "Sin clasificar"}</span>{place.visited && <span className="visit-tag">✓ Visitado</span>}</div>
             <h2>{place.title}</h2>
             <p className="visit-muted">{place.locationName ? `${place.locationName}${place.latitude === null ? " · Pendiente de ubicar" : ""}` : place.latitude === null ? "Pendiente de ubicar" : "Ubicación guardada en el mapa"}</p>
@@ -84,8 +100,11 @@ export default function VisitPlaces({ places, types, userId, isAdmin, initialSta
                 {place.latitude !== null && place.longitude !== null && <Link className="btn btn-ghost btn-sm" href={`/pois?visit=${place.id}`}>Ver en mapa</Link>}
             </div>
             {(isAdmin || place.authorId === userId) && <div className="visit-card-footer">
-                <button className="btn btn-ghost btn-sm" onClick={() => { setForm(place); window.scrollTo({ top: 0, behavior: "smooth" }); }}>Editar</button>
                 <button className="btn btn-soft btn-sm" disabled={busyId !== null} onClick={() => void changeStatus(place)}>{busyId === place.id ? "Guardando…" : place.visited ? "Volver a pendientes" : "Marcar visitado"}</button>
+                <div className="visit-edit-actions">
+                <button className="btn btn-ghost btn-sm" disabled={busyId !== null} onClick={() => { setForm(place); window.scrollTo({ top: 0, behavior: "smooth" }); }}>Editar</button>
+                <button className="btn btn-danger btn-sm" disabled={busyId !== null} onClick={() => void removePlace(place)}>Eliminar</button>
+                </div>
             </div>}
         </article>)}</div>
         </section>

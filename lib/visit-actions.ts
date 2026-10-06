@@ -111,6 +111,22 @@ export async function setVisitPlaceVisited(id: number, visited: boolean) {
     }
 }
 
+export async function deleteVisitPlace(id: number) {
+    const session = await getSession();
+    if (!session?.userId) return { success: false, error: "Inicia sesión para eliminar lugares." };
+    if (!Number.isSafeInteger(id) || id < 1) return { success: false, error: "Lugar inválido." };
+    try {
+        const result = await prisma.visitPlace.deleteMany({
+            where: { id, ...(session.role === "ADMIN" ? {} : { authorId: Number(session.userId) }) },
+        });
+        if (!result.count) return { success: false, error: "El lugar ya no existe o no tienes permiso para eliminarlo." };
+        refreshVisits();
+        return { success: true };
+    } catch {
+        return { success: false, error: "No se ha podido eliminar el lugar. Inténtalo de nuevo." };
+    }
+}
+
 export async function saveVisitType(id: number | null, input: unknown) {
     const session = await getSession();
     if (!session?.userId || session.role !== "ADMIN") return { success: false, error: "Solo los administradores pueden gestionar tipos." };
